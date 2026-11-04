@@ -1,0 +1,68 @@
+[
+  {
+    "id": "2025-07-26",
+    "date": "2025-07-26",
+    "title": "Youth Retreat & Recollection",
+    "description": "A day-long spiritual retreat for youth aged 16-35. Theme: Living Faith in a Digital Age.",
+    "group": "Parish Announcements",
+    "category": "Parish Announcement",
+    "liturgicalColor": "#0369a1",
+    "featured": false,
+    "rank": "parish_event",
+    "sourceId": "local-parish-calendar",
+    "sourceLabel": "Parish Calendar"
+  },
+  {
+    "id": "2025-08-02",
+    "date": "2025-08-02",
+    "title": "Parish Fundraising Gala Night",
+    "description": "Annual gala dinner to raise funds for church renovations and social welfare programs.",
+    "group": "Parish Announcements",
+    "category": "Parish Announcement",
+    "liturgicalColor": "#065f46",
+    "featured": false,
+    "rank": "parish_event",
+    "sourceId": "local-parish-calendar",
+    "sourceLabel": "Parish Calendar"
+  },
+  {
+    "id": "2026-11-01",
+    "date": "2026-11-01",
+    "title": "All Saints",
+    "description": "",
+    "category": "Saint",
+    "group": "Feast & Saint Days",
+    "sourceId": "universalis-live",
+    "sourceLabel": "Universalis"
+  },
+  {
+    "id": "2026-11-02",
+    "date": "2026-11-02",
+    "title": "All Souls",
+    "description": "",
+    "category": "Memorial",
+    "group": "Feast & Saint Days",
+    "sourceId": "universalis-live",
+    "sourceLabel": "Universalis"
+  },
+  {
+    "id": "2026-11-03",
+    "date": "2026-11-03",
+    "title": "Saint Martin de Porres, Religious",
+    "description": "",
+    "category": "Saint",
+    "group": "Feast & Saint Days",
+    "sourceId": "universalis-live",
+    "sourceLabel": "Universalis"
+  },
+  {
+    "id": "2026-11-04",
+    "date": "2026-11-04",
+    "title": "Saint Charles Borromeo, Bishop",
+    "description": "",
+    "category": "Saint",
+    "group": "Feast & Saint Days",
+    "sourceId": "universalis-live",
+    "sourceLabel": "Universalis"
+  }
+]

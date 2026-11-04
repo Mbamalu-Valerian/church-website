@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+/* Custom font assignments */
+:root {
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --gold: #c9a84c;
+  --gold-light: #e8c97e;
+  --gold-dark: #a07830;
+  --burgundy: #6b1d2b;
+  --navy: #1a2744;
+  --cream: #faf8f3;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--cream);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+}
+
+/* Navbar */
+.navbar {
+  background: rgba(26, 39, 68, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Hero */
+.hero-section {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/hero-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  z-index: 0;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(26, 39, 68, 0.88) 0%,
+    rgba(107, 29, 43, 0.75) 50%,
+    rgba(26, 39, 68, 0.82) 100%
+  );
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Gold accent line */
+.gold-line {
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold-dark));
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.gold-line + p {
+  display: block;
+  margin-top: 1.25rem;
+}
+
+/* Section headings */
+.section-tag {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Gold button */
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold), var(--gold-light));
+  color: #1a1a1a;
+  font-weight: 700;
+  padding: 0.875rem 2.25rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.4);
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(201, 168, 76, 0.55);
+  background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold));
+}
+
+/* Outline button */
+.btn-outline {
+  border: 2px solid rgba(201, 168, 76, 0.8);
+  color: var(--gold-light);
+  font-weight: 600;
+  padding: 0.875rem 2.25rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  background: rgba(201, 168, 76, 0.15);
+  border-color: var(--gold-light);
+  transform: translateY(-2px);
+}
+
+/* Cards */
+.card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Priest cards */
+.priest-card {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.priest-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+.priest-card img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Event cards */
+.event-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 4px solid var(--gold);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.event-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+}
+
+.event-date-box {
+  min-width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--navy), #2a3a5c);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-light);
+  flex-shrink: 0;
+}
+
+/* Activity icons */
+.activity-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--navy), #2a3a5c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+/* Office hours table */
+.hours-table tr {
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.hours-table tr:last-child {
+  border-bottom: none;
+}
+
+/* Scroll animations */
+.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  z-index: 9999;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  background: linear-gradient(135deg, #065f46, #047857);
+  color: #ecfdf5;
+}
+
+.toast.error {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fef2f2;
+}
+
+/* Mobile menu */
+#mobile-menu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+
+#mobile-menu.open {
+  max-height: 400px;
+}
+
+/* Section backgrounds */
+.section-cream {
+  background-color: var(--cream);
+}
+
+.section-white {
+  background-color: #ffffff;
+}
+
+.section-gold {
+  position: relative;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(135deg, #f0dfb2 0%, var(--gold) 38%, #b8892d 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.section-blue {
+  position: relative;
+  background:
+    radial-gradient(circle at 90% 15%, rgba(201, 168, 76, 0.18), transparent 30%),
+    linear-gradient(135deg, #173158 0%, var(--navy) 45%, #2d4070 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.section-community {
+  position: relative;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(201, 168, 76, 0.12), transparent 26%),
+    linear-gradient(135deg, #fffdf8 0%, #ffffff 100%);
+  box-shadow: inset 0 1px 0 rgba(201, 168, 76, 0.18);
+}
+
+.section-gold h2,
+.section-gold h3,
+.section-gold h4 {
+  color: var(--navy);
+}
+
+.section-blue h2,
+.section-blue h3,
+.section-blue h4 {
+  color: #ffffff;
+}
+
+.section-community h2,
+.section-community h3,
+.section-community h4 {
+  color: var(--navy);
+}
+
+.section-gold .section-tag {
+  color: var(--navy);
+}
+
+.section-blue .section-tag {
+  color: var(--gold-light);
+}
+
+.section-community .section-tag {
+  color: var(--gold-dark);
+}
+
+.section-navy {
+  background: linear-gradient(135deg, var(--navy) 0%, #253260 100%);
+}
+
+/* Rosary decoration */
+.decorative-cross {
+  font-size: 3rem;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Back to top */
+#back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: #1a1a1a;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 16px rgba(201, 168, 76, 0.4);
+}
+
+#back-to-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#back-to-top:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.55);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--gold-dark), var(--gold));
+  border-radius: 4px;
+}
+
+/* Footer */
+footer {
+  background: linear-gradient(180deg, #111827 0%, #0d1421 100%);
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .hero-bg {
+    background-attachment: scroll;
+  }
+  .priest-card img {
+    height: 260px;
+  }
+}
