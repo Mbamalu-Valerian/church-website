@@ -15,7 +15,7 @@ In the Azure Portal, open the target Web App:
 2. Set the startup command to `npm start`.
 3. Under **Configuration > General settings**, enable App Service storage and set **Always On** if the plan offers it.
 4. Under **Configuration > Application settings**, add the settings below. Keep `PORT` unset; App Service supplies it.
-5. In **Deployment Center**, connect the GitHub repository and use the `main` branch, or let the repository's GitHub Actions workflow deploy directly. The repository workflow targets the existing `hrccw-test` Web App; update its app name and publish-profile secret if deploying to a different app.
+5. In the GitHub repository, add the publish profile for **this** Web App as the `AZUREAPPSERVICE_PUBLISH_PROFILE` repository secret (instructions below).
 6. Under **Monitoring > Health check**, optionally set the path to `/api/health`.
 7. After deployment, open `https://<app-name>.azurewebsites.net/api/health`. A healthy response includes `"ok": true` and `"database": "connected"`.
 
@@ -24,7 +24,7 @@ In the Azure Portal, open the target Web App:
 | Name | Value |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `APP_ORIGIN` | Exact public HTTPS origins, comma-separated and without trailing slashes. For the demo: `https://hrccw-test.azurewebsites.net`. Add `https://hrccw.com.ng` and `https://www.hrccw.com.ng` after those custom domains are connected. |
+| `APP_ORIGIN` | Exact public HTTPS origins, comma-separated and without trailing slashes. For the Azure hostname: `https://hrccw-church-website.azurewebsites.net`. Add `https://hrccw.com.ng` and `https://www.hrccw.com.ng` after those custom domains are connected. |
 | `DATABASE_PATH` | `/home/data/dominus.sqlite` |
 | `SESSION_SECRET` | A unique random secret of at least 32 characters. |
 | `DOMINUS_USERNAME` | Your private Dominus login name. |
@@ -41,7 +41,17 @@ node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'
 
 ### GitHub Actions deployment
 
-The workflow at `.github/workflows/main_hrccw-test.yml` runs the server tests, TypeScript check, and production build. It packages the frontend, Express server, migration seeds, and production-only dependencies, then deploys that package to `hrccw-test` on pushes to `main` or a manual workflow run. Add the target Web App's publish profile to the repository secret referenced by that workflow. Never put the publish profile contents in a tracked file.
+The workflow at `.github/workflows/main_hrccw-church-website.yml` runs the server tests, TypeScript check, and production build. It packages the frontend, Express server, migration seeds, and production-only dependencies, then deploys that package to `hrccw-church-website` on pushes to `main` or a manual workflow run.
+
+To configure its credential:
+
+1. In Azure Portal, open the **hrccw-church-website** Web App and download its publish profile from **Overview > Get publish profile**.
+2. In GitHub, open **Mbamalu-Valerian/church-website > Settings > Secrets and variables > Actions**.
+3. Create or update the repository secret named `AZUREAPPSERVICE_PUBLISH_PROFILE`, using the full contents of the downloaded XML file as its value.
+4. If Azure will not provide a publish profile because SCM basic authentication is disabled, enable SCM basic authentication for this Web App, download the profile, then store it only in the GitHub secret. Never commit or share the XML.
+5. In GitHub, open **Actions > Build and deploy to Azure App Service - hrccw-church-website** and run the workflow, or push a change to `main`.
+
+Use the publish profile for **hrccw-church-website**, not the previous `hrccw-test` app. Never put the profile contents in a tracked file.
 
 The workflow packages dependencies before deployment, so Azure does not need to build the app during deployment. Runtime content is deployed separately from the SQLite database, which lives at `/home/data/dominus.sqlite`.
 
