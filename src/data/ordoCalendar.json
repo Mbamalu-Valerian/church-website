@@ -8,9 +8,7 @@
     "category": "Parish Announcement",
     "liturgicalColor": "#0369a1",
     "featured": false,
-    "rank": "parish_event",
-    "sourceId": "local-parish-calendar",
-    "sourceLabel": "Parish Calendar"
+    "rank": "parish_event"
   },
   {
     "id": "2025-08-02",
@@ -21,9 +19,7 @@
     "category": "Parish Announcement",
     "liturgicalColor": "#065f46",
     "featured": false,
-    "rank": "parish_event",
-    "sourceId": "local-parish-calendar",
-    "sourceLabel": "Parish Calendar"
+    "rank": "parish_event"
   },
   {
     "id": "2026-11-01",
@@ -31,9 +27,7 @@
     "title": "All Saints",
     "description": "",
     "category": "Saint",
-    "group": "Feast & Saint Days",
-    "sourceId": "universalis-live",
-    "sourceLabel": "Universalis"
+    "group": "Feast & Saint Days"
   },
   {
     "id": "2026-11-02",
@@ -41,9 +35,7 @@
     "title": "All Souls",
     "description": "",
     "category": "Memorial",
-    "group": "Feast & Saint Days",
-    "sourceId": "universalis-live",
-    "sourceLabel": "Universalis"
+    "group": "Feast & Saint Days"
   },
   {
     "id": "2026-11-03",
@@ -51,9 +43,7 @@
     "title": "Saint Martin de Porres, Religious",
     "description": "",
     "category": "Saint",
-    "group": "Feast & Saint Days",
-    "sourceId": "universalis-live",
-    "sourceLabel": "Universalis"
+    "group": "Feast & Saint Days"
   },
   {
     "id": "2026-11-04",
@@ -61,8 +51,6 @@
     "title": "Saint Charles Borromeo, Bishop",
     "description": "",
     "category": "Saint",
-    "group": "Feast & Saint Days",
-    "sourceId": "universalis-live",
-    "sourceLabel": "Universalis"
+    "group": "Feast & Saint Days"
   }
 ]

@@ -27,7 +27,6 @@ The private **Dominus** dashboard is at `/dominus` and is intentionally omitted 
 | Site copy, Mass times, activities, clergy, office days, testimonials, and links | `src/App.tsx` | Update these source files and rebuild the frontend. |
 | Parish gallery photos | SQLite `gallery_images` table | Upload photos from Dominus, publish selected photos, and choose one published photo as the featured display image. |
 | Liturgical feast and saint days | SQLite `feast_days` table | Create and publish in Dominus with a title, date, category, and a color of the day (Green, White, Red, or Purple). Only this Sunday-to-Saturday week's entries appear publicly. |
-| Universalis source cache | `src/data/universalisMonthly.json` | Legacy cache from the retired calendar sync; no longer used for public feast days. |
 | Parish announcements | SQLite `announcements` table | Create and publish in Dominus. Only published events dated Sunday through Saturday of the current Abuja-time week appear publicly; items stay in SQLite outside that display window. |
 | Parish articles | SQLite `articles` table | Write, preview, edit drafts, publish immediately, or schedule a future publication date in Dominus. Each post has its own writer byline. Past published articles remain in the public archive. |
 | Admin accounts and sessions | SQLite `admin_users` and `sessions` tables | Login passwords are stored as scrypt hashes; sessions are stored server-side. |
@@ -130,26 +129,8 @@ With the API terminal still running, open `http://localhost:3001/api/health`. It
 | `SESSION_SECRET` | Long random secret used to sign Dominus session cookies. Required in production. |
 | `DOMINUS_USERNAME` | Private dashboard login name. Required in production. |
 | `DOMINUS_PASSWORD` | Private dashboard password. Required in production. |
-| `UNIVERSALIS_API_URL` | Optional preferred Universalis JSON source URL for calendar syncing. |
-| `UNIVERSALIS_SCRAPE_URL` | Optional Universalis page URL for calendar syncing. Defaults to `https://universalis.com/today.htm`. |
-| `UNIVERSALIS_URL` | Legacy fallback URL supported by the sync script. |
 
 `VITE_API_URL` may be set at frontend build time if the API is hosted separately. By default, the frontend uses the same-origin `/api` path.
-
-## Universalis Calendar Sync
-
-Feast days are now created and published directly in Dominus, so this script is deprecated and no longer drives the public calendar. The commands below are retained for reference only; the website does not scrape Universalis on each visitor request.
-
-Commands:
-
-| Command | Behavior |
-| --- | --- |
-| `npm run sync:universalis` | Pull from the configured/default source, then publish the local calendar data. |
-| `npm run sync:universalis:monthly` | Pull and refresh the monthly source cache only. |
-| `npm run sync:universalis:weekly` | Publish a calendar from the existing local monthly cache. |
-| `npm run sync:universalis:watch` | Keep the process running and publish at the next Sunday midnight, then repeat weekly, using the machine's local timezone. |
-
-The watcher is a long-running process and should not be started casually on a serverless/static host. Run a one-shot sync as part of a scheduled job or deployment process if automated refresh is needed.
 
 ## API Reference
 
@@ -211,7 +192,7 @@ For the complete build specification, system prerequisites, direct dependency in
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the production checklist. The current SQLite setup is for one Node server instance on a host with a persistent writable disk. Use managed PostgreSQL before running multiple app instances. Configure production secrets in the hosting provider rather than committing them; enable HTTPS and back up SQLite with its online backup API while using WAL mode.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Azure App Service configuration and production checklist. The current SQLite setup is for one Node server instance on a host with a persistent writable disk. Use managed PostgreSQL before running multiple app instances. Configure production secrets in the hosting provider rather than committing them; enable HTTPS and back up SQLite with its online backup API while using WAL mode.
 
 ## Project Structure
 
@@ -219,16 +200,12 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the production checklist. The current SQL
 src/
   App.tsx                    Public site and Dominus dashboard
   data/ordoCalendar.json     One-time feast-day migration source
-  data/universalisMonthly.json  Cached normalized Universalis entries (legacy)
   index.css                  Global styles and theme
   main.tsx                   React application entry point
-scripts/
-  sync-universalis.mjs       Universalis pull and calendar publishing
 server/
   index.js                   Express API, SQLite schema, auth, static hosting
   index.test.js              API integration test
-  google-drive.js            Drive link parsing, image URLs, and folder listing
-  google-drive.test.js       Google Drive helper tests
   data/announcements.json    One-time SQLite migration source
+  data/articles.json         One-time first-article seed
 public/images/               Public parish imagery
 ```
