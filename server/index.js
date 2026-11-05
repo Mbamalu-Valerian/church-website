@@ -15,23 +15,44 @@ try {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+
+// Azure gives PORT=8080, local uses 3001
 const port = Number(process.env.PORT || 3001);
 const production = process.env.NODE_ENV === 'production';
-const databasePath = path.resolve(process.env.DATABASE_PATH || path.join(__dirname, 'data', 'dominus.sqlite'));
+
+// AZURE FIX: Use /home/data for persistence on App Service, local file for dev
+const isAzure = fs.existsSync('/home') && fs.existsSync('/home/site');
+const defaultDatabasePath = isAzure
+  ? path.join('/home', 'data', 'dominus.sqlite')
+  : path.join(__dirname, 'data', 'dominus.sqlite');
+
+const databasePath = path.resolve(process.env.DATABASE_PATH || defaultDatabasePath);
 const legacyDataPath = path.join(__dirname, 'data', 'announcements.json');
 const articleSeedPath = path.join(__dirname, 'data', 'articles.json');
 const distPath = path.join(__dirname, '..', 'dist');
 const sessionDurationMs = 12 * 60 * 60 * 1000;
 const cookieName = 'dominus.sid';
 const sessionSecret = process.env.SESSION_SECRET || randomBytes(48).toString('base64url');
+
+// AZURE FIX: Auto-allow Azure hostname + your Truehost domains
+const azureHostname = process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null;
+const rawOrigins = process.env.APP_ORIGIN || (production ? '' : 'http://localhost:5173,http://127.0.0.1:5173');
 const allowedOrigins = new Set(
-  (process.env.APP_ORIGIN || (production ? '' : 'http://localhost:5173,http://127.0.0.1:5173'))
-    .split(',').map((origin) => origin.trim()).filter(Boolean),
+  rawOrigins.split(',').map((origin) => origin.trim()).filter(Boolean),
 );
+if (azureHostname) allowedOrigins.add(azureHostname);
+
 const feastColorValues = new Set(['#16a34a', '#ffffff', '#b91c1c', '#6b21a8']);
 
-if (production && (!process.env.SESSION_SECRET || !process.env.DOMINUS_USERNAME || !process.env.DOMINUS_PASSWORD || allowedOrigins.size === 0)) {
-  throw new Error('Production requires SESSION_SECRET, DOMINUS_USERNAME, DOMINUS_PASSWORD, and APP_ORIGIN.');
+if (production) {
+  const missing = [];
+  if (!process.env.SESSION_SECRET) missing.push('SESSION_SECRET');
+  if (!process.env.DOMINUS_USERNAME) missing.push('DOMINUS_USERNAME');
+  if (!process.env.DOMINUS_PASSWORD) missing.push('DOMINUS_PASSWORD');
+  if (allowedOrigins.size === 0) missing.push('APP_ORIGIN');
+  if (missing.length > 0) {
+    throw new Error(`Production requires: ${missing.join(', ')}. Set them in Azure > Configuration > Application settings.`);
+  }
 }
 
 fs.mkdirSync(path.dirname(databasePath), { recursive: true });
@@ -259,7 +280,7 @@ const parseGalleryImageData = (value) => {
   const validSignature = match[1] === 'jpeg'
     ? data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff
     : match[1] === 'png'
-      ? data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      ? data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
       : data.length >= 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP';
   return validSignature ? { data, dataUrl: value, contentType: `image/${match[1]}` } : null;
 };
@@ -690,13 +711,21 @@ app.delete('/api/feast-days/:id', requireSession, (req, res) => {
 });
 
 database.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(Date.now());
-app.use(express.static(distPath));
+
+// Serve frontend - check if dist exists
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  console.warn(`Frontend dist not found at ${distPath} - run npm run build first`);
+  app.use(express.static(distPath));
+}
+
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ ok: false, error: 'Route not found.' });
   if (fs.existsSync(path.join(distPath, 'index.html'))) return res.sendFile(path.join(distPath, 'index.html'));
   return res.json({ ok: true, message: 'Dominus API is running. Build the frontend to serve the app.' });
 });
 
-app.listen(port, () => {
-  console.log(`Dominus API listening on port ${port}; SQLite database: ${databasePath}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Dominus API listening on port ${port}; SQLite: ${databasePath}; Production: ${production}; Origins: ${[...allowedOrigins].join(', ')}`);
 });
