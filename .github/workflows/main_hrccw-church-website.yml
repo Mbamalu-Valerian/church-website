@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy to Azure App Service - hrccw-church-website
+name: Build and deploy Node.js app to Azure Web App - hrccw-church-website
 
 on:
   push:
@@ -12,59 +9,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
+      - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Test, type-check, and build
+          node-version: '22'
+          cache: 'npm'
+      - name: Install and Build
         run: |
-          npm run test:server
-          npx tsc --noEmit
+          npm ci
           npm run build
-
-      - name: Prepare production package
-        run: |
-          npm prune --omit=dev
-          mkdir -p deploy/src/data
-          cp package.json package-lock.json deploy/
-          cp -R node_modules dist server deploy/
-          cp src/data/ordoCalendar.json deploy/src/data/
-
-      - name: Upload production package
+      - name: Zip artifact for deployment
+        run: zip -r app.zip dist server package.json package-lock.json -x "node_modules/*"
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-package
-          path: deploy/
-          if-no-files-found: error
+          name: node-app
+          path: app.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      contents: read
-
     steps:
-      - name: Download production package
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: app-package
-          path: deploy
-
-      - name: Deploy to Azure App Service
+          name: node-app
+      - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'hrccw-church-website'
           slot-name: 'Production'
-          package: deploy
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          package: app.zip

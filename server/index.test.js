@@ -52,6 +52,10 @@ test('Dominus API protects administration and publishes notices and articles', a
     );
   `);
   legacyDatabase.prepare(`
+    INSERT INTO gallery_images (file_id, caption, status)
+    VALUES ('legacy-gallery-photo', 'Legacy Parish Photo', 'Published')
+  `).run();
+  legacyDatabase.prepare(`
     INSERT INTO articles (slug, title, excerpt, body, publish_date, status)
     VALUES (?, ?, ?, ?, ?, 'Draft')
   `).run('existing-post', 'Existing Article', 'Original intro', 'Original body', '2999-12-31');
@@ -138,9 +142,25 @@ test('Dominus API protects administration and publishes notices and articles', a
 
     const privateGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`);
     assert.equal(privateGalleryBeforeLogin.status, 401, 'gallery administration should require authentication');
+    const privateAlbumsBeforeLogin = await fetch(`${baseUrl}/api/gallery/albums`);
+    assert.equal(privateAlbumsBeforeLogin.status, 401, 'album administration should require authentication');
     let publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert.equal(publicGalleryResponse.status, 200);
     assert.deepEqual((await publicGalleryResponse.json()).data, [], 'gallery should start empty');
+    const legacyMigrationDb = new DatabaseSync(databasePath);
+    const migratedLegacyPhoto = legacyMigrationDb.prepare(`
+      SELECT i.id, i.album_id, a.title AS album_title
+      FROM gallery_images i JOIN gallery_albums a ON a.id = i.album_id
+      WHERE i.file_id = 'legacy-gallery-photo'
+    `).get();
+    assert.equal(migratedLegacyPhoto.album_title, 'General Gallery', 'legacy photos should migrate into General Gallery');
+    legacyMigrationDb.close();
+    let galleryAlbums = (await (await fetch(`${baseUrl}/api/gallery/albums`, { headers: { Cookie: cookie } })).json()).data;
+    const generalAlbum = galleryAlbums.find((album) => album.slug === 'general-gallery');
+    const uncategorizedAlbum = galleryAlbums.find((album) => album.slug === 'uncategorized');
+    assert(generalAlbum, 'General Gallery should exist even when created by migration');
+    assert.equal(generalAlbum.photoCount, 1, 'migration should preserve the existing gallery photo');
+    assert(uncategorizedAlbum, 'reserved Uncategorized album should exist');
     const invalidGalleryImage = await fetch(`${baseUrl}/api/gallery`, {
       method: 'POST',
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
@@ -195,6 +215,71 @@ test('Dominus API protects administration and publishes notices and articles', a
     const publicImageResponse = await fetch(`${baseUrl}/api/public/gallery/${galleryImage.id}/image`);
     assert.equal(publicImageResponse.status, 200, 'published gallery images should be publicly viewable');
     assert.deepEqual(Buffer.from(await publicImageResponse.arrayBuffer()), Buffer.from(jpegData.split(',')[1], 'base64'));
+
+    const createAlbumResponse = await fetch(`${baseUrl}/api/gallery/albums`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Harvest of Amazing Grace 2026', date: '2026-04-15', description: 'Parish harvest celebration.' }),
+    });
+    assert.equal(createAlbumResponse.status, 201);
+    let harvestAlbum = (await createAlbumResponse.json()).data;
+    assert.equal(harvestAlbum.slug, 'harvest-of-amazing-grace-2026');
+    assert.equal(harvestAlbum.date, '2026-04-15');
+
+    const albumImageResponse = await fetch(`${baseUrl}/api/gallery`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caption: 'Harvest celebration', imageData: jpegData, albumId: harvestAlbum.id }),
+    });
+    assert.equal(albumImageResponse.status, 201);
+    const albumImage = (await albumImageResponse.json()).data;
+    assert.equal(albumImage.albumId, harvestAlbum.id, 'uploaded photos should belong to the selected album');
+    const publishAlbumImage = await fetch(`${baseUrl}/api/gallery/${albumImage.id}/publish`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(publishAlbumImage.status, 200);
+
+    const movePhotoToAlbum = await fetch(`${baseUrl}/api/gallery/${galleryImage.id}/album`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ albumId: harvestAlbum.id }),
+    });
+    assert.equal(movePhotoToAlbum.status, 200);
+    assert.equal((await movePhotoToAlbum.json()).data.albumId, harvestAlbum.id, 'photos should be movable between albums');
+
+    const setAlbumCover = await fetch(`${baseUrl}/api/gallery/albums/${harvestAlbum.id}`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: harvestAlbum.title, date: harvestAlbum.date, description: harvestAlbum.description, coverImageId: albumImage.id }),
+    });
+    assert.equal(setAlbumCover.status, 200);
+    harvestAlbum = (await setAlbumCover.json()).data;
+    assert.equal(harvestAlbum.coverImage.id, albumImage.id, 'an album cover should be changeable');
+
+    const featureAlbum = await fetch(`${baseUrl}/api/gallery/albums/${harvestAlbum.id}/feature`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(featureAlbum.status, 200);
+    let publicAlbums = (await (await fetch(`${baseUrl}/api/public/gallery/albums`)).json()).data;
+    assert.equal(publicAlbums[0].slug, harvestAlbum.slug, 'featured album should sort first in the public gallery');
+    assert.equal(publicAlbums[0].isFeatured, true);
+    assert.equal(publicAlbums[0].photoCount, 2);
+    const publicAlbumDetail = await fetch(`${baseUrl}/api/public/gallery/albums/${harvestAlbum.slug}`);
+    assert.equal(publicAlbumDetail.status, 200);
+    assert.equal((await publicAlbumDetail.json()).data.photos.length, 2, 'album detail should include only its published photos');
+
+    const deleteAlbum = await fetch(`${baseUrl}/api/gallery/albums/${harvestAlbum.id}`, {
+      method: 'DELETE',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(deleteAlbum.status, 200);
+    galleryAlbums = (await (await fetch(`${baseUrl}/api/gallery/albums`, { headers: { Cookie: cookie } })).json()).data;
+    const refreshedUncategorized = galleryAlbums.find((album) => album.slug === 'uncategorized');
+    const remainingImages = (await (await fetch(`${baseUrl}/api/gallery`, { headers: { Cookie: cookie } })).json()).data;
+    assert(!galleryAlbums.some((album) => album.id === harvestAlbum.id), 'deleted albums should no longer be listed');
+    assert(remainingImages.filter((image) => image.albumId === refreshedUncategorized.id).length >= 2, 'deleting an album should move rather than delete its photos');
 
     const adminList = await fetch(`${baseUrl}/api/announcements`, { headers: { Cookie: cookie } });
     const existingAnnouncements = (await adminList.json()).data;

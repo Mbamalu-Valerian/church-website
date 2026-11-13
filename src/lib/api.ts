@@ -25,13 +25,29 @@ export type FeastDay = {
 
 export type GalleryImage = {
   id: number;
+  albumId: number | null;
   fileId: string;
   caption: string;
   status: Status;
   thumbnailUrl: string;
   viewerUrl: string;
   isFeatured: boolean;
+  uploadedAt: string;
 };
+
+export type GalleryAlbum = {
+  id: number;
+  title: string;
+  slug: string;
+  date: string;
+  description: string;
+  coverImage: GalleryImage | null;
+  isFeatured: boolean;
+  createdAt: string;
+  photoCount: number;
+};
+
+export type GalleryAlbumDetail = GalleryAlbum & { photos: GalleryImage[] };
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -91,6 +107,8 @@ export const publicApi = {
   articles: () => request<ParishArticle[]>('/public/articles'),
   feastDays: () => request<FeastDay[]>('/public/feast-days'),
   gallery: () => request<GalleryImage[]>('/public/gallery'),
+  galleryAlbums: () => request<GalleryAlbum[]>('/public/gallery/albums'),
+  galleryAlbum: (slug: string) => request<GalleryAlbumDetail>(`/public/gallery/albums/${encodeURIComponent(slug)}`),
 };
 
 export const authApi = {
@@ -163,7 +181,28 @@ export const adminApi = {
   async listGalleryImages(): Promise<GalleryImage[]> {
     return request('/gallery');
   },
-  async createGalleryImage(input: { caption: string; imageData: string }): Promise<GalleryImage> {
+  async listGalleryAlbums(): Promise<GalleryAlbum[]> {
+    return request('/gallery/albums');
+  },
+  async createGalleryAlbum(input: { title: string; date: string; description: string }): Promise<GalleryAlbum> {
+    return request('/gallery/albums', json('POST', input));
+  },
+  async updateGalleryAlbum(id: number, input: { title: string; date: string; description: string; coverImageId?: number | null }): Promise<GalleryAlbum> {
+    return request(`/gallery/albums/${id}`, json('PUT', input));
+  },
+  async featureGalleryAlbum(id: number): Promise<void> {
+    await request(`/gallery/albums/${id}/feature`, json('PUT'));
+  },
+  async unfeatureGalleryAlbum(id: number): Promise<void> {
+    await request(`/gallery/albums/${id}/unfeature`, json('PUT'));
+  },
+  async deleteGalleryAlbum(id: number): Promise<void> {
+    await request(`/gallery/albums/${id}`, json('DELETE'));
+  },
+  async moveGalleryImage(id: number, albumId: number): Promise<GalleryImage> {
+    return request(`/gallery/${id}/album`, json('PUT', { albumId }));
+  },
+  async createGalleryImage(input: { caption: string; imageData: string; albumId?: number }): Promise<GalleryImage> {
     return request('/gallery', json('POST', input));
   },
   async publishGalleryImage(id: number): Promise<void> {

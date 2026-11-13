@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { publicApi, authApi, adminApi } from './lib/api';
-import type { Announcement, ParishArticle, FeastDay, GalleryImage } from './lib/api';
+import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, GalleryImage } from './lib/api';
 
 // ─── SVG Icon Components ──────────────────────────────────────────────────────
 type IconProps = { className?: string; style?: React.CSSProperties };
@@ -112,21 +112,9 @@ const BookIcon = ({ className = '', style }: IconProps) => (
   </svg>
 );
 
-const MusicIcon = ({ className = '', style }: IconProps) => (
-  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-  </svg>
-);
-
 const UsersIcon = ({ className = '', style }: IconProps) => (
   <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
-  </svg>
-);
-
-const StarIcon = ({ className = '', style }: IconProps) => (
-  <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
 
@@ -160,8 +148,8 @@ const Navbar = () => {
   ];
 
   const moreLinks = [
-    { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Pastoral Team', href: '#priests' },
+    { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Office Hours', href: '#office-hours' },
     { label: 'Upcoming Events', href: '#events' },
     { label: 'Contact Us', href: '#contact' },
@@ -169,8 +157,8 @@ const Navbar = () => {
 
   const allNavLinks = [
     ...primaryNavLinks,
-    { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Pastoral Team', href: '#priests' },
+    { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Office Hours', href: '#office-hours' },
   ];
 
@@ -291,12 +279,12 @@ const Navbar = () => {
 const HeroSection = () => {
   const massTimes = [
     { day: 'Weekday Mass (Mon-Fri)', times: ['6:00 AM', '12:00 Noon', '6:00 PM'] },
-    { day: 'Saturday Mass', times: ['6:00 AM'] },
+    { day: 'Saturday Mass', times: ['7:00 AM'] },
     { day: 'Sunday Mass', times: ['6:00 AM', '8:00 AM', '8:15 AM (Children)', '10:00 AM', '6:00 PM'] },
   ];
 
   const sacramentTimes = [
-    { day: 'Confession', times: ['Thursdays: 6:30 AM & 6:30 PM', 'Saturdays: 6:30 AM'] },
+    { day: 'Confession', times: ['Thursdays: 6:30 AM & 6:30 PM', 'Saturdays: 7:30 AM'] },
     { day: 'Benediction', times: ['Sundays, 5:00 PM'] },
   ];
 
@@ -333,7 +321,7 @@ const HeroSection = () => {
 
           {/* Slogan with manual line break */}
           <p className="text-lg sm:text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-4">
-            Rosarians!!! <br />
+            Rosarians, <br />
             One Family United In Christ
           </p>
           <p className="text-base text-gray-400 mb-10 flex items-center justify-center gap-2">
@@ -408,46 +396,21 @@ const AboutSection = () => {
 };
 
 // ─── Parish Activities Section ─────────────────────────────────────────────────
-const parishChoirs = [
-  {
-    name: 'Chorale de Angelis',
-    mass: 'Sings at the Sunday 6:00 AM Mass',
-    rehearsal: 'Rehearsal: Saturday at 6:00 PM',
-  },
-  {
-    name: 'All Saints Choir',
-    mass: 'Sings at the Sunday 8:00 AM Mass',
-    rehearsal: 'Rehearsals: Sunday at 10:30 AM and Saturday at 5:00 PM',
-  },
-  {
-    name: 'St. Gregory Choir',
-    mass: 'Sings at the Sunday 10:00 AM Mass',
-    rehearsal: 'Rehearsal: Saturday at 6:30 PM',
-  },
-  {
-    name: "St. Cecilia's Choir {Parish Choir}",
-    mass: 'Parish Choir (Major Feasts & Solemnities)',
-    rehearsal: 'Rehearsal: Thursdays at 6:00 PM',
-  },
-];
-
 const ActivitiesSection = () => {
-  const [choirsOpen, setChoirsOpen] = useState(false);
   const activities = [
     {
-      icon: <MusicIcon className="w-7 h-7 text-white" />,
-      title: 'Parish Choir & Rehearsals',
-      description: 'Parish Choir and Individual Choir rehearsals. Tap to view all choir assignments and rehearsal schedules.',
-      schedule: 'Weekly (Tap to view all 4 choirs)',
-      tag: 'Music',
-      isChoir: true,
+      icon: <UsersIcon className="w-7 h-7 text-white" />,
+      title: 'Catholic Youth Organization (CYON)',
+      description: 'A parish community for young people to grow in faith, fellowship, and service.',
+      schedule: '1st Sunday after 8:00 AM Mass',
+      tag: 'Youth',
     },
     {
-      icon: <UsersIcon className="w-7 h-7 text-white" />,
-      title: "Children's Ministry & CYON",
-      description: "Nurturing the faith of our youth through the Catholic Youth Organization of Nigeria (CYON) and Children's Ministry.",
-      schedule: "Children's Mass: Sundays, 8:15 AM",
-      tag: 'Youth',
+      icon: <BookIcon className="w-7 h-7 text-white" />,
+      title: "Children's Ministry",
+      description: 'Faith formation, catechism, and liturgy for children.',
+      schedule: "Sundays during Children's Mass at 8:15 AM",
+      tag: 'Children',
     },
     {
       icon: <HandIcon className="w-7 h-7 text-white" />,
@@ -464,20 +427,6 @@ const ActivitiesSection = () => {
       tag: 'Family',
     },
     {
-      icon: <CrossIcon className="w-7 h-7 text-white" />,
-      title: 'Confession',
-      description: 'Experience the healing grace of God through the Sacrament of Reconciliation.',
-      schedule: 'Thur: 6:30 AM & 6:30 PM | Sat: 6:30 AM',
-      tag: 'Sacrament',
-    },
-    {
-      icon: <StarIcon className="w-7 h-7 text-white" />,
-      title: 'Benediction',
-      description: "A sacred hour of prayer and contemplation before the Blessed Sacrament.",
-      schedule: 'Sundays, 5:00 PM',
-      tag: 'Prayer',
-    },
-    {
       icon: <BookIcon className="w-7 h-7 text-white" />,
       title: 'Catechism Classes',
       description: 'Faith formation and sacramental preparation classes for all ages.',
@@ -488,7 +437,7 @@ const ActivitiesSection = () => {
       icon: <CrossIcon className="w-7 h-7 text-white" />,
       title: 'Infant Baptism',
       description: 'Welcoming the newest members of our family into the Catholic faith.',
-      schedule: '1st Saturday of the Month: 6:00 AM',
+      schedule: '1st Saturday of the Month: 7:00 AM',
       tag: 'Sacrament',
     }
   ];
@@ -511,10 +460,7 @@ const ActivitiesSection = () => {
           {activities.map((act, i) => (
             <div
               key={i}
-              onClick={() => {
-                if (act.isChoir) setChoirsOpen(true);
-              }}
-              className={`card group transition-all duration-300 ${act.isChoir ? 'cursor-pointer hover:border-amber-400 hover:shadow-lg ring-1 ring-amber-500/20' : ''}`}
+              className="card group transition-all duration-300"
             >
               <div className="p-6 flex flex-col h-full">
                 <div className="flex items-center justify-between mb-4">
@@ -528,7 +474,6 @@ const ActivitiesSection = () => {
                 </div>
                 <h3 className="text-lg font-bold mb-6 flex items-center justify-between" style={{ color: '#1a2744', fontFamily: 'Playfair Display, serif' }}>
                   <span>{act.title}</span>
-                  {act.isChoir && <span className="text-xs font-sans font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Tap to view</span>}
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed mb-4 flex-grow">
                   {act.description}
@@ -542,75 +487,6 @@ const ActivitiesSection = () => {
           ))}
         </div>
       </div>
-
-      {/* Parish Choirs Modal */}
-      {choirsOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setChoirsOpen(false)}
-        >
-          <div
-            className="bg-[#1a2744] text-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 border border-amber-500/40 shadow-2xl relative animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/40 text-amber-400">
-                  <MusicIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold font-serif text-white">Parish Choirs</h3>
-                  <p className="text-xs text-amber-300">Mass assignments & rehearsal schedules</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setChoirsOpen(false)}
-                className="text-gray-400 hover:text-white p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                aria-label="Close modal"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-              {parishChoirs.map((choir, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all"
-                >
-                  <h4 className="font-bold text-white text-base sm:text-lg flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 rounded-full bg-amber-500 text-gray-900 font-bold text-xs flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    {choir.name}
-                  </h4>
-                  <div className="ml-8 space-y-1.5">
-                    <p className="text-sm text-amber-200/90 font-medium flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                      {choir.mass}
-                    </p>
-                    <p className="text-xs text-gray-300 flex items-center gap-2">
-                      <ClockIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      {choir.rehearsal}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setChoirsOpen(false)}
-                className="btn-gold text-xs py-2 px-6"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 };
@@ -621,48 +497,60 @@ const CommitteesSection = () => {
 
   const liturgicalCommittees = [
     {
+      name: 'Liturgy Committee',
+      category: 'Liturgical Committee',
+      meeting: 'As scheduled by the committee',
+      description: 'Headed by the Parish Priest (PP), the committee coordinates and supports the parish liturgical celebrations.',
+    },
+    {
       name: 'Board of Lectors',
       category: 'Liturgical Committee',
       meeting: '1st & 3rd Saturdays, 5:00 PM',
-      duty: 'Proclamation of the Word of God at Daily & Sunday Masses',
       description: 'Dedicated to prayerful study, diction preparation, and the reverent proclamation of Sacred Scripture during all liturgical celebrations.',
     },
     {
       name: 'Parish Choir',
       category: 'Liturgical Committee',
       meeting: 'Weekly rehearsals by individual choirs',
-      duty: 'Sacred Hymnody & Liturgical Choir Service',
       description: 'Coordinating sacred liturgical music across all parish Masses through four active choirs:',
       choirList: [
-        'Chorale de Angelis — Sunday 6:00 AM Mass | Rehearsal: Saturday at 6:00 PM',
-        'All Saints Choir — Sunday 8:00 AM Mass | Rehearsals: Sunday at 10:30 AM & Saturday at 5:00 PM',
-        'St. Gregory Choir — Sunday 10:00 AM Mass | Rehearsal: Saturday at 6:30 PM',
-        "St. Cecilia's Choir {Parish Choir} — Rehearsal: Thursdays at 6:00 PM",
+        'Choral de Angelis | Rehearsals: Tuesday at 5:00 PM and Saturday at 5:00 PM',
+        'All Saints Choir | Rehearsals: Sunday at 10:30 AM & Saturday at 5:00 PM',
+        'St. Gregory | Rehearsals: Tuesday at 5:00 PM and Saturday at 6:00 PM',
       ],
     },
     {
       name: 'Altar Knights',
       category: 'Liturgical Committee',
       meeting: 'Every Saturday, 8:00 AM',
-      duty: 'Sanctuary Service & Processions',
       description: 'Guiding altar servers in reverence, discipline, liturgical decorum, and assisting the priests during Masses and solemn processions.',
     },
   ];
 
   const nonLiturgicalCommittees = [
     {
-      name: 'Board of Church Wardens (Church Ushers)',
+      name: 'Board of Church Wardens',
       category: 'Non-Liturgical Committee',
       meeting: '2nd Sunday of the month after 10:00 AM Mass',
-      duty: 'Hospitality, Decorum & Offertory Coordination',
       description: 'Ensuring reverent order and hospitality in church, assisting elderly and visitors, coordinating offertory processions, and maintaining sanctuary decorum.',
     },
     {
-      name: 'Communications & Media Committee',
+      name: 'Communications Committee',
       category: 'Non-Liturgical Committee',
-      meeting: '1st Sunday of the month, 4:00 PM',
-      duty: 'Digital Media, Bulletin, Audio-Visuals & Parish Website',
-      description: 'Managing parish digital broadcasts, weekly bulletin publications, photography, live streaming of Masses, audio-visual setup, and website updates.',
+      meeting: 'Last Tuesday of the month, 6:30 PM',
+      description: 'Manages information dissemination and communication activities, monthly bulletin publication, parish announcements, and website updates.',
+    },
+    {
+      name: 'Finance Committee',
+      category: 'Non-Liturgical Committee',
+      meeting: 'As scheduled by the committee',
+      description: 'Supports the responsible planning, management, and reporting of parish finances.',
+    },
+    {
+      name: 'Security Committee',
+      category: 'Non-Liturgical Committee',
+      meeting: 'As scheduled by the committee',
+      description: 'Supports a safe and secure environment for parishioners, visitors, and parish activities.',
     },
   ];
 
@@ -750,9 +638,6 @@ const CommitteesSection = () => {
                   <ClockIcon className="w-4 h-4 text-amber-600 shrink-0" />
                   <span><strong>Meeting:</strong> {c.meeting}</span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  <span className="font-semibold text-gray-700">Role:</span> {c.duty}
-                </div>
               </div>
             </div>
           ))}
@@ -770,10 +655,23 @@ type CommunityItem = {
   states?: string;
   subtitle?: string;
   thanksgiving?: string;
+  details?: {
+    formalName?: string;
+    audience: string;
+    members?: string;
+    leadership?: string;
+    meetingPlace?: string;
+    patronSaintDay?: string;
+    slogan?: string;
+    mantra?: string;
+    mission?: string;
+    whatWeDo: string;
+  };
 };
 
 const CommunitySection = () => {
   const [activeTab, setActiveTab] = useState<'organizations' | 'societies' | 'knighthood' | 'states'>('organizations');
+  const [expandedAssociations, setExpandedAssociations] = useState<Record<string, boolean>>({});
   const [expandedTabs, setExpandedTabs] = useState<Record<string, boolean>>({
     organizations: false,
     societies: false,
@@ -784,22 +682,22 @@ const CommunitySection = () => {
   const groups: Record<'organizations' | 'societies' | 'knighthood' | 'states', CommunityItem[]> = {
     organizations: [
       { name: 'Catholic Men Organization (CMO)', meeting: 'Every Second Saturday', thanksgiving: 'Every Second Sunday' },
-      { name: 'Catholic Women Organization (CWO)', meeting: 'Every First Saturday', thanksgiving: '3rd Sunday after 10AM Mass' },
-      { name: 'Catholic Youth Organization (CYON)', meeting: '1st Sunday after 8AM Mass', thanksgiving: 'Quarterly Youth Thanksgiving' },
-      { name: 'Childrens Ministry', meeting: 'Sundays during Children\'s Mass', subtitle: 'Faith formation, catechism & liturgy for children' },
+      { name: 'Catholic Women Organization (CWO)', meeting: 'Every First Saturday', thanksgiving: 'First Sunday after 10AM Mass' },
+      { name: 'Catholic Youth Organization (CYON)', meeting: 'Third Sunday after 8AM Mass', thanksgiving: 'Third Sunday at 8AM Mass' },
+      { name: 'Childrens Ministry', meeting: 'Sundays at 8:15am during Children\'s Mass', subtitle: 'Faith formation, catechism & liturgy for children' },
       { name: 'Parish Pastoral Council (PPC)', meeting: 'Monthly Executive & General Assembly', subtitle: 'Parish consultative & pastoral governance council' },
     ],
     societies: [
-      { name: 'Eucharistic Adorers' },
-      { name: 'Purgatorian Society' },
+      { name: 'Eucharistic Adorers', meeting: 'Mondays, 5:00 PM' },
+      { name: 'Purgatorian Society', meeting: 'Mondays, 5:00 PM' },
+      { name: 'St. Jude Society', meeting: 'Wednesdays, 5:00 PM' },
+      { name: 'Infant Jesus of Prague', meeting: 'Novena: 16th–24th, 9-day monthly novena' },
       { name: 'Rosa Mistica' },
       { name: 'Legion of Mary' },
       { name: 'Holy Family' },
       { name: 'Blue Army' },
-      { name: 'Infant Jesus of Prague' },
       { name: 'Queen of All Hearts' },
       { name: 'Association of Sacred Heart of Jesus' },
-      { name: 'St. Jude Society' },
       { name: 'Block Rosary' },
       { name: 'Precious Blood' },
       { name: 'Guild of St. Anthony of Padua' },
@@ -819,23 +717,67 @@ const CommunitySection = () => {
     ],
     knighthood: [
       { name: 'Knights & Ladies of St. Mulumba', subtitle: 'Order of the Knights of Saint Mulumba Nigeria (KSM / LSM)', meeting: '3rd Saturday of the month' },
-      { name: 'Knights & Ladies of St. John International', subtitle: 'Knights of St. John International & Ladies Auxiliary (KSJI / LAUX)', meeting: '2nd Saturday of the month' },
+      { name: 'Knights & Ladies of St. John International Commandery #653', subtitle: 'Knights of St. John International & Ladies Auxiliary (KSJI / LAUX)', meeting: '3rd Saturday of the month' },
     ],
     states: [
-      { name: 'St. Anthony Catholic Community' },
-      { name: 'Blessed Iwene Tansi', states: 'Anambra, Ebonyi & Enugu', time: '2nd Sunday of the month' },
-      { name: 'St. Michael Catholic Community', states: 'All Yoruba-speaking states', time: '3rd Sunday of the month' },
-      { name: 'St. Peter Catholic Community', states: 'Akwa Ibom, Bayelsa, Cross River & Rivers', time: '1st Sunday of the month' },
-      { name: 'St. Patrick Catholic Community', states: 'Edo & Delta', time: '2nd Sunday of the month' },
-      { name: 'Northern States Catholic Community', states: 'Kaduna, Kano, Katsina, Sokoto, Borno, Bauchi, Gombe & Adamawa', time: '1st Sunday of the month' },
-      { name: 'St. Raphael Catholic Community', states: 'Imo & Abia', time: '2nd Sunday of the month' },
-      { name: 'St. Gabriel Catholic Community' },
+      {
+        name: 'St. Anthony Catholic Community',
+        states: 'Benue/Kogi',
+        time: 'Last Sunday of every month',
+        details: {
+          formalName: 'St. Anthony Benue/Kogi Catholic Community, Holy Rosary Catholic Church Wuse',
+          audience: 'For parishioners from Benue and Kogi States.',
+          leadership: 'Headed by elected executives.',
+          patronSaintDay: '13th June.',
+          whatWeDo: 'Visit the sick, support the needy, celebrate with members in times of joy, and check up on members who have been away from meetings for a long period without prior notice.',
+        },
+      },
+      {
+        name: 'Blessed Iwene Tansi',
+        states: 'Anambra/Enugu/Parts of Ebonyi',
+        time: '2nd Sunday of the month',
+        details: {
+          audience: 'For parishioners from Anambra, Enugu and parts of Ebonyi States.',
+          slogan: 'Iwene Tansi di Ngozi, Yobala anyi ayiyo: Blessed Iwene Tansi, pray for us.',
+          mantra: "O nuru ube nwanne agbakwana oso, Ofu obi ka anyi ji aga: Do not ignore a brother/sister's cry, we move with one spirit.",
+          mission: 'Grow together in Catholic faith like the early Christians in Acts 2, verses 44 to 47, in love, unity and care.',
+          whatWeDo: 'Pray and study Catechism in Igbo, share food at monthly meetings, support members in sorrow and joy, pay levies promptly, and join all Parish feasts, harvest, retreats and prayers.',
+        },
+      },
+      {
+        name: 'St. Michael Yoruba Catholic Community',
+        states: 'Ekiti/Ogun/Osun/Oyo/Ondo/Kwara/Kogi/Lagos',
+        time: 'Last Sunday of every month',
+        details: {
+          formalName: 'St. Michael Yoruba Catholic Community, Holy Rosary Catholic Church Wuse Zone 2',
+          audience: 'For parishioners from Ekiti, Ogun, Osun, Oyo, Ondo, Kwara, Kogi and Lagos.',
+          meetingPlace: 'Civic Center.',
+          mission: 'Participate actively in all Parish programs and serve in other societies in the Parish.',
+          whatWeDo: 'Pray the Novena to St. Michael from 20th to 28th September and celebrate St. Michael Day and Thanksgiving on 29th September. Join the Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, Lenten Retreat, corporal works of mercy and quarterly Archdiocesan Meeting. Serve in Sacred Heart, St. Anthony, CWO, CMO, the Choir and other societies.',
+        },
+      },
+      { name: 'St. Peter Catholic Community', states: 'Akwa Ibom/Bayelsa/Cross River/Rivers', time: '1st Sunday of the month' },
+      { name: 'St. Patrick Catholic Community', states: 'Edo/Delta', time: '2nd Sunday of the month' },
+      { name: 'St. Raphael Catholic Community', states: 'Imo/Abia/Parts of Ebonyi', time: '2nd Sunday of the month' },
+      {
+        name: 'Saint Gabriel Arewa Catholic Community',
+        states: 'All Northern States',
+        time: 'Last Sunday of every month, after 8:00 AM Mass',
+        details: {
+          formalName: 'Saint Gabriel Arewa Northern Catholic Community of Holy Rosary Catholic Church, Wuse Zone 2',
+          audience: 'For parishioners from the 18 Northern States.',
+          members: '40 registered members.',
+          meetingPlace: 'Civic Centre opposite the Church.',
+          mission: 'Foster unity, fellowship, empowerment and support for members.',
+          whatWeDo: 'Pray the Novena to St. Gabriel from 20th to 28th September and celebrate Thanksgiving on 29th September. Join parish programs such as Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, and serve actively in CYON, CWO, CMO, the Choir and other societies.',
+        },
+      },
     ],
   };
 
   const initialCounts: Record<string, number> = {
     organizations: 4,
-    societies: 26,
+    societies: 4,
     knighthood: 2,
     states: 8,
   };
@@ -890,7 +832,7 @@ const CommunitySection = () => {
             return (
               <div
                 key={i}
-                className="p-5 rounded-lg flex items-center justify-between transition-all duration-300 hover:border-amber-500/30"
+                className="p-5 rounded-lg transition-all duration-300 hover:border-amber-500/30"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
                 <div>
@@ -909,6 +851,80 @@ const CommunitySection = () => {
                       <span className="font-medium text-amber-200/70">Thanksgiving:</span> {thanksgiving}
                     </div>
                   ) : null}
+                  {activeTab === 'states' && (
+                    <>
+                      <button
+                        type="button"
+                        aria-expanded={!!expandedAssociations[item.name]}
+                        aria-controls={`association-details-${i}`}
+                        onClick={() => setExpandedAssociations((previous) => ({
+                          ...previous,
+                          [item.name]: !previous[item.name],
+                        }))}
+                        className="mt-3 text-xs font-semibold text-amber-300 hover:text-amber-200 transition-colors"
+                      >
+                        {expandedAssociations[item.name] ? 'Read less' : 'Read more'}
+                      </button>
+                      {expandedAssociations[item.name] && (
+                        <div
+                          id={`association-details-${i}`}
+                          className="mt-3 space-y-3 border-t border-white/10 pt-3 text-sm text-gray-200"
+                        >
+                          {item.details ? (
+                            <>
+                              {item.details.formalName && (
+                                <p className="font-semibold text-white">{item.details.formalName}</p>
+                              )}
+                              <p>{item.details.audience}</p>
+                              {item.details.members && <p>{item.details.members}</p>}
+                              {item.details.leadership && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Leadership: </span>
+                                  {item.details.leadership}
+                                </p>
+                              )}
+                              {item.details.patronSaintDay && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Patron Saint Day: </span>
+                                  {item.details.patronSaintDay}
+                                </p>
+                              )}
+                              {item.details.meetingPlace && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Meeting place: </span>
+                                  {item.details.meetingPlace}
+                                </p>
+                              )}
+                              {item.details.slogan && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Slogan: </span>
+                                  {item.details.slogan}
+                                </p>
+                              )}
+                              {item.details.mantra && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Mantra: </span>
+                                  {item.details.mantra}
+                                </p>
+                              )}
+                              {item.details.mission && (
+                                <p>
+                                  <span className="font-semibold text-amber-200">Mission: </span>
+                                  {item.details.mission}
+                                </p>
+                              )}
+                              <p>
+                                <span className="font-semibold text-amber-200">What We Do: </span>
+                                {item.details.whatWeDo}
+                              </p>
+                            </>
+                          ) : (
+                            <p>More information about this association will be added soon.</p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -936,7 +952,7 @@ const CommunitySection = () => {
               ) : (
                 <>
                   <span>
-                    View More {tabLabels[activeTab]} ({allItems.length - limit} more)
+                    {activeTab === 'societies' ? 'See More' : 'View More'} {tabLabels[activeTab]} ({allItems.length - limit} more)
                   </span>
                   <ChevronDownIcon className="w-4 h-4 transition-transform duration-200" />
                 </>
@@ -1131,17 +1147,18 @@ const GallerySection = () => {
   const [loading, setLoading] = useState(true);
   const [galleryError, setGalleryError] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+  const previewImages = images.slice(0, 6);
 
   useEffect(() => {
     if (activeImageIndex === null) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setActiveImageIndex(null);
-      if (event.key === 'ArrowRight') setActiveImageIndex((index) => index === null ? null : (index + 1) % images.length);
-      if (event.key === 'ArrowLeft') setActiveImageIndex((index) => index === null ? null : (index - 1 + images.length) % images.length);
+      if (event.key === 'ArrowRight') setActiveImageIndex((index) => index === null ? null : (index + 1) % previewImages.length);
+      if (event.key === 'ArrowLeft') setActiveImageIndex((index) => index === null ? null : (index - 1 + previewImages.length) % previewImages.length);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeImageIndex, images.length]);
+  }, [activeImageIndex, previewImages.length]);
 
   useEffect(() => {
     publicApi.gallery()
@@ -1159,12 +1176,14 @@ const GallerySection = () => {
           <div className="gold-line mb-8" />
         </div>
         {galleryError ? <p role="alert" className="text-center text-gray-600">{galleryError}</p>
-          : images.length ? <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {images.map((image) => (
+          : loading ? <p className="text-center text-gray-600">Loading parish photos...</p>
+          : previewImages.length ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            {previewImages.map((image, index) => (
               <button
                 key={image.id}
                 type="button"
-                onClick={() => setActiveImageIndex(images.findIndex((item) => item.id === image.id))}
+                onClick={() => setActiveImageIndex(index)}
                 aria-label={`View ${image.caption}`}
                 className={`group relative block w-full overflow-hidden rounded-xl bg-white p-0 text-left shadow-md focus:outline-none focus:ring-4 focus:ring-amber-400 ${image.isFeatured ? 'sm:col-span-2 lg:col-span-2' : ''}`}
               >
@@ -1176,9 +1195,12 @@ const GallerySection = () => {
               </button>
             ))}
           </div>
-            : <p className="text-center text-gray-600">{loading ? 'Loading parish photos...' : 'Parish photos will appear here soon.'}</p>}
+          ) : <p className="text-center text-gray-600">Parish photos will appear here soon.</p>}
+        <div className="mt-10 text-center">
+          <a href="/gallery" className="btn-gold inline-flex">See More Gallery Albums</a>
+        </div>
       </div>
-      {activeImageIndex !== null && images[activeImageIndex] && (
+      {activeImageIndex !== null && previewImages[activeImageIndex] && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8"
           role="dialog"
@@ -1187,16 +1209,193 @@ const GallerySection = () => {
           onClick={() => setActiveImageIndex(null)}
         >
           <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
-          {images.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + images.length) % images.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-6">‹</button>}
+          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + previewImages.length) % previewImages.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-6">‹</button>}
           <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
-            <img src={images[activeImageIndex].thumbnailUrl} alt={images[activeImageIndex].caption} className="max-h-[78vh] max-w-full rounded-lg object-contain" />
-            <p className="m-0 text-center text-lg font-semibold text-white">{images[activeImageIndex].caption}</p>
-            <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {images.length}</p>
+            <img src={previewImages[activeImageIndex].thumbnailUrl} alt={previewImages[activeImageIndex].caption} className="max-h-[78vh] max-w-full rounded-lg object-contain" />
+            <p className="m-0 text-center text-lg font-semibold text-white">{previewImages[activeImageIndex].caption}</p>
+            <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {previewImages.length}</p>
           </div>
-          {images.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % images.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-6">›</button>}
+          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % previewImages.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-6">›</button>}
         </div>
       )}
     </section>
+  );
+};
+
+const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
+  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [album, setAlbum] = useState<GalleryAlbumDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [galleryError, setGalleryError] = useState('');
+  const [search, setSearch] = useState('');
+  const [albumSort, setAlbumSort] = useState<'newest' | 'oldest'>('newest');
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setGalleryError('');
+    if (albumSlug) {
+      publicApi.galleryAlbum(albumSlug)
+        .then((result) => { if (active) setAlbum(result); })
+        .catch((error: unknown) => { if (active) setGalleryError(error instanceof Error ? error.message : 'Unable to load this album.'); })
+        .finally(() => { if (active) setLoading(false); });
+    } else {
+      publicApi.galleryAlbums()
+        .then((result) => { if (active) setAlbums(result); })
+        .catch((error: unknown) => { if (active) setGalleryError(error instanceof Error ? error.message : 'Unable to load gallery albums.'); })
+        .finally(() => { if (active) setLoading(false); });
+    }
+    return () => { active = false; };
+  }, [albumSlug]);
+
+  useEffect(() => {
+    if (activeImageIndex === null || !album) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActiveImageIndex(null);
+      if (event.key === 'ArrowRight') setActiveImageIndex((index) => index === null ? null : (index + 1) % album.photos.length);
+      if (event.key === 'ArrowLeft') setActiveImageIndex((index) => index === null ? null : (index - 1 + album.photos.length) % album.photos.length);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeImageIndex, album]);
+
+  const visibleAlbums = albums
+    .filter((item) => item.title.toLowerCase().includes(search.trim().toLowerCase()))
+    .slice()
+    .sort((a, b) => {
+      if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+      const aDate = a.date || a.createdAt;
+      const bDate = b.date || b.createdAt;
+      return albumSort === 'newest' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
+    });
+  const displayDate = (value: string) => {
+    if (!value) return 'Date not specified';
+    const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
+    return Number.isNaN(parsedDate.getTime())
+      ? 'Date not specified'
+      : parsedDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f7f4ec]">
+      <header className="bg-[#1a2744] px-4 py-4 text-white shadow-lg sm:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <a href="/" className="font-serif text-lg font-bold sm:text-xl">Holy Rosary Catholic Church</a>
+          <a href="/#gallery" className="text-sm font-semibold text-amber-300 hover:text-amber-200">Back to Home</a>
+        </div>
+      </header>
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {albumSlug && (
+          <a href="/gallery" className="mb-6 inline-flex items-center gap-2 font-semibold text-[#1a2744] hover:text-amber-700">
+            <span aria-hidden="true">←</span> Back to Gallery
+          </a>
+        )}
+        {galleryError ? (
+          <p role="alert" className="rounded-xl bg-white p-6 text-center text-gray-700 shadow-sm">{galleryError}</p>
+        ) : loading ? (
+          <p role="status" className="text-center text-gray-600">Loading gallery...</p>
+        ) : albumSlug && album ? (
+          <>
+            <div className="mb-8">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="m-0 font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">{album.title}</h1>
+                {album.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
+              </div>
+              <p className="mt-2 text-sm text-gray-600">{displayDate(album.date)} · {album.photoCount} {album.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+              {album.description && <p className="mt-3 max-w-3xl leading-relaxed text-gray-700">{album.description}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+              {album.photos.map((photo, index) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  aria-label={`View ${photo.caption}`}
+                  className="group relative overflow-hidden rounded-xl bg-white p-0 text-left shadow-md focus:outline-none focus:ring-4 focus:ring-amber-400"
+                >
+                  <img src={photo.thumbnailUrl} alt={photo.caption} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  {photo.isFeatured && <span className="absolute left-2 top-2 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-bold text-slate-950 sm:left-3 sm:top-3 sm:text-xs">Featured photo</span>}
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 text-sm font-semibold text-white">{photo.caption}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : albumSlug ? (
+          <p className="text-center text-gray-600">This gallery album could not be found.</p>
+        ) : (
+          <>
+            <div className="mb-10 text-center">
+              <p className="section-tag mb-3">Memories</p>
+              <h1 className="font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">Photo Gallery</h1>
+              <div className="gold-line my-6" />
+              <p className="mx-auto max-w-2xl text-gray-600">Browse parish photos grouped by event.</p>
+            </div>
+            <div className="mx-auto mb-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <label>
+                <span className="sr-only">Search albums by event name</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.currentTarget.value)}
+                  placeholder="Search events..."
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-[#1a2744] shadow-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                />
+              </label>
+              <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-[#1a2744] shadow-sm">
+                <span>Sort</span>
+                <select value={albumSort} onChange={(event) => setAlbumSort(event.currentTarget.value === 'oldest' ? 'oldest' : 'newest')} className="min-w-0 flex-1 bg-transparent py-3 outline-none">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+              </label>
+            </div>
+            {visibleAlbums.length ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleAlbums.map((item) => (
+                  <article key={item.id} className="overflow-hidden rounded-2xl bg-white shadow-md">
+                    <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="group relative block aspect-[4/3] overflow-hidden bg-[#e8e4d8]">
+                      {item.coverImage ? (
+                        <img src={item.coverImage.thumbnailUrl} alt={`${item.title} album cover`} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-gray-500">Album cover coming soon</div>
+                      )}
+                      {item.isFeatured && <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
+                    </a>
+                    <div className="p-5">
+                      <h2 className="font-serif text-xl font-bold text-[#1a2744]">{item.title}</h2>
+                      <p className="mt-1 text-sm text-gray-500">{displayDate(item.date)} · {item.photoCount} {item.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+                      {item.description && <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-gray-600">{item.description}</p>}
+                      <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="btn-gold mt-5 inline-flex">See More</a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-600">{search ? 'No albums match your search.' : 'Parish photo albums will appear here soon.'}</p>
+            )}
+          </>
+        )}
+      </main>
+      {album && activeImageIndex !== null && album.photos[activeImageIndex] && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Gallery photo viewer"
+          onClick={() => setActiveImageIndex(null)}
+        >
+          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
+          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + album.photos.length) % album.photos.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:left-6">‹</button>}
+          <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
+            <img src={album.photos[activeImageIndex].thumbnailUrl} alt={album.photos[activeImageIndex].caption} className="max-h-[78vh] max-w-full rounded-lg object-contain" />
+            <p className="m-0 text-center text-lg font-semibold text-white">{album.photos[activeImageIndex].caption}</p>
+            <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {album.photos.length}</p>
+          </div>
+          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % album.photos.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:right-6">›</button>}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -1266,12 +1465,6 @@ const ArticlesSection = () => {
 const PastoralTeamSection = () => {
   const hierarchy = [
     {
-      name: 'His Eminence, John Cardinal Onaiyekan',
-      title: 'Archbishop Emeritus of Abuja',
-      image: '/images/cardinal.jpg',
-      specialization: 'Cardinal',
-    },
-    {
       name: 'Most Rev. Dr. Ignatius Ayau Kaigama',
       title: 'Archbishop of Abuja',
       image: '/images/archbishop.jpg',
@@ -1282,6 +1475,12 @@ const PastoralTeamSection = () => {
       title: 'Auxiliary Bishop of Abuja',
       image: '/images/aux-bishop.jpg',
       specialization: 'Auxiliary Bishop',
+    },
+    {
+      name: 'His Eminence, John Cardinal Onaiyekan',
+      title: 'Archbishop Emeritus of Abuja',
+      image: '/images/cardinal.jpg',
+      specialization: 'Cardinal',
     }
   ];
 
@@ -1379,8 +1578,8 @@ const PastoralTeamSection = () => {
 // ─── Office Hours Section ─────────────────────────────────────────────────────
 const OfficeHoursSection = () => {
   const clergyOfficeDays = [
-    { role: 'Parish Priest', days: 'Monday – Thursday' },
-    { role: 'Assistant Parish Priest', days: 'Tuesday – Friday' },
+    { role: 'Parish Priest', days: 'Tuesday – Friday' },
+    { role: 'Assistant Parish Priest', days: 'Monday – Thursday' },
   ];
 
   const services = [
@@ -1623,11 +1822,11 @@ const Footer = () => {
   const quickLinks = [
     { label: 'Mass Schedule', href: '#home' },
     { label: 'About Us', href: '#about' },
+    { label: 'Pastoral Team', href: '#priests' },
     { label: 'Parish Activities', href: '#activities' },
     { label: 'Parish Committees', href: '#committees' },
     { label: 'Parish Communities', href: '#community' },
     { label: 'Photo Gallery', href: '#gallery' },
-    { label: 'Pastoral Team', href: '#priests' },
     { label: 'Contact Us', href: '#contact' },
   ];
 
@@ -1835,6 +2034,17 @@ const DominusDashboard = () => {
   const [feastCategory, setFeastCategory] = useState('Memorial');
   const [feastColor, setFeastColor] = useState('#16a34a');
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>([]);
+  const [gallerySelectedAlbumId, setGallerySelectedAlbumId] = useState<number | null>(null);
+  const [galleryNewAlbumTitle, setGalleryNewAlbumTitle] = useState('');
+  const [galleryNewAlbumDate, setGalleryNewAlbumDate] = useState('');
+  const [galleryNewAlbumDescription, setGalleryNewAlbumDescription] = useState('');
+  const [galleryAlbumSearch, setGalleryAlbumSearch] = useState('');
+  const [galleryAlbumDateFilter, setGalleryAlbumDateFilter] = useState('');
+  const [galleryAlbumEditId, setGalleryAlbumEditId] = useState<number | null>(null);
+  const [galleryAlbumEditTitle, setGalleryAlbumEditTitle] = useState('');
+  const [galleryAlbumEditDate, setGalleryAlbumEditDate] = useState('');
+  const [galleryAlbumEditDescription, setGalleryAlbumEditDescription] = useState('');
   const [galleryError, setGalleryError] = useState('');
   const [gallerySaving, setGallerySaving] = useState(false);
   const [galleryMessage, setGalleryMessage] = useState('');
@@ -1873,6 +2083,18 @@ const DominusDashboard = () => {
     }
   };
 
+  const fetchGalleryAlbums = async () => {
+    try {
+      const albums = await adminApi.listGalleryAlbums();
+      setGalleryAlbums(albums);
+      setGallerySelectedAlbumId((current) => current && albums.some((album) => album.id === current)
+        ? current
+        : albums.find((album) => album.slug === 'general-gallery')?.id ?? albums[0]?.id ?? null);
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to load gallery albums. Refresh and try again.'));
+    }
+  };
+
   useEffect(() => {
     authApi.isAdmin()
       .then(setIsAuthenticated)
@@ -1886,6 +2108,7 @@ const DominusDashboard = () => {
     void fetchArticles();
     void fetchFeastDays();
     void fetchGalleryImages();
+    void fetchGalleryAlbums();
   }, [isAuthenticated]);
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -2002,6 +2225,10 @@ const DominusDashboard = () => {
     const files = Array.from(event.currentTarget.files || []);
     event.currentTarget.value = '';
     if (files.length === 0) return;
+    if (gallerySelectedAlbumId === null) {
+      setGalleryError('Create or select an album before uploading photos.');
+      return;
+    }
     setGalleryError('');
     setGalleryMessage('');
     setGallerySaving(true);
@@ -2019,7 +2246,7 @@ const DominusDashboard = () => {
       try {
         const imageData = await compressGalleryImage(file);
         const caption = file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Parish photo';
-        const created = await adminApi.createGalleryImage({ caption, imageData });
+        const created = await adminApi.createGalleryImage({ caption, imageData, albumId: gallerySelectedAlbumId });
         setGalleryImages((current) => [created, ...current]);
         uploaded += 1;
         setGalleryMessage(`Uploading photos: ${index + 1} of ${imageFiles.length} checked.`);
@@ -2034,6 +2261,110 @@ const DominusDashboard = () => {
     }
     setGalleryMessage(`${uploaded} photo${uploaded === 1 ? '' : 's'} saved as drafts.`);
     if (failures.length > 0) setGalleryError(failures.slice(0, 5).join('. '));
+    await fetchGalleryAlbums();
+  };
+
+  const handleCreateGalleryAlbum = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setGalleryError('');
+    setGalleryMessage('');
+    try {
+      const album = await adminApi.createGalleryAlbum({
+        title: galleryNewAlbumTitle,
+        date: galleryNewAlbumDate,
+        description: galleryNewAlbumDescription,
+      });
+      setGalleryAlbums((current) => [album, ...current]);
+      setGallerySelectedAlbumId(album.id);
+      setGalleryNewAlbumTitle('');
+      setGalleryNewAlbumDate('');
+      setGalleryNewAlbumDescription('');
+      setGalleryMessage(`${album.title} album created. Select photos to upload into it.`);
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to create the gallery album.'));
+    }
+  };
+
+  const handleStartGalleryAlbumEdit = (album: GalleryAlbum) => {
+    setGalleryAlbumEditId(album.id);
+    setGalleryAlbumEditTitle(album.title);
+    setGalleryAlbumEditDate(album.date);
+    setGalleryAlbumEditDescription(album.description);
+  };
+
+  const handleSaveGalleryAlbum = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (galleryAlbumEditId === null) return;
+    setGalleryError('');
+    try {
+      const updated = await adminApi.updateGalleryAlbum(galleryAlbumEditId, {
+        title: galleryAlbumEditTitle,
+        date: galleryAlbumEditDate,
+        description: galleryAlbumEditDescription,
+      });
+      setGalleryAlbums((current) => current.map((album) => album.id === updated.id ? updated : album));
+      setGalleryAlbumEditId(null);
+      setGalleryMessage(`${updated.title} album updated.`);
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to update the gallery album.'));
+    }
+  };
+
+  const handleFeatureGalleryAlbum = async (album: GalleryAlbum) => {
+    try {
+      if (album.isFeatured) await adminApi.unfeatureGalleryAlbum(album.id);
+      else await adminApi.featureGalleryAlbum(album.id);
+      setGalleryAlbums((current) => current.map((item) => ({ ...item, isFeatured: !album.isFeatured && item.id === album.id })));
+      setGalleryMessage(album.isFeatured ? `${album.title} is no longer featured.` : `${album.title} is now the featured album.`);
+      setGalleryError('');
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to feature the gallery album.'));
+    }
+  };
+
+  const handleDeleteGalleryAlbum = async (album: GalleryAlbum) => {
+    if (album.slug === 'uncategorized') return;
+    if (!window.confirm(`Delete the "${album.title}" album? Its photos will be moved to Uncategorized, not deleted.`)) return;
+    try {
+      await adminApi.deleteGalleryAlbum(album.id);
+      setGalleryAlbums((current) => current.filter((item) => item.id !== album.id));
+      if (galleryAlbumEditId === album.id) setGalleryAlbumEditId(null);
+      await fetchGalleryImages();
+      await fetchGalleryAlbums();
+      setGalleryMessage(`Album deleted. Its photos were moved to Uncategorized.`);
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to delete the gallery album.'));
+    }
+  };
+
+  const handleMoveGalleryImage = async (image: GalleryImage, albumId: number) => {
+    try {
+      const updated = await adminApi.moveGalleryImage(image.id, albumId);
+      setGalleryImages((current) => current.map((item) => item.id === updated.id ? updated : item));
+      await fetchGalleryAlbums();
+      setGalleryError('');
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to move the photo to that album.'));
+    }
+  };
+
+  const handleSetGalleryAlbumCover = async (image: GalleryImage) => {
+    if (image.albumId === null) return;
+    const album = galleryAlbums.find((item) => item.id === image.albumId);
+    if (!album) return;
+    try {
+      const updated = await adminApi.updateGalleryAlbum(album.id, {
+        title: album.title,
+        date: album.date,
+        description: album.description,
+        coverImageId: image.id,
+      });
+      setGalleryAlbums((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setGalleryMessage(`${image.caption} is now the ${album.title} cover photo.`);
+      setGalleryError('');
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to set the album cover photo.'));
+    }
   };
 
   const handleGalleryStatus = async (image: GalleryImage) => {
@@ -2063,6 +2394,7 @@ const DominusDashboard = () => {
     try {
       await adminApi.deleteGalleryImage(id);
       setGalleryImages((current) => current.filter((image) => image.id !== id));
+      await fetchGalleryAlbums();
     } catch (error) {
       setGalleryError(errorMessage(error, 'Unable to delete the gallery image.'));
     }
@@ -2146,6 +2478,8 @@ const DominusDashboard = () => {
     setAnnouncements([]);
     setArticles([]);
     setFeastDays([]);
+    setGalleryImages([]);
+    setGalleryAlbums([]);
   };
 
   if (!isAuthenticated) {
@@ -2354,12 +2688,93 @@ const DominusDashboard = () => {
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Memories</p>
             <h2 style={{ margin: '6px 0 0', fontSize: 24 }}>Photo Gallery</h2>
             <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>
-              Select a folder of photos to add them to the gallery. Publish the photos you want visitors to see, then choose one as the featured display photo.
+              Organize photos into event albums, publish photos visitors can see, and feature an album or individual photo.
             </p>
           </div>
+          <form onSubmit={handleCreateGalleryAlbum} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, alignItems: 'end', padding: 16, border: '1px solid #e2e8f0', borderRadius: 14, background: '#fafbfd' }}>
+            <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+              New album event name
+              <input required maxLength={120} value={galleryNewAlbumTitle} onChange={(event) => setGalleryNewAlbumTitle(event.target.value)} placeholder="Harvest of Amazing Grace 2026" style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+              Event date
+              <input type="date" value={galleryNewAlbumDate} onChange={(event) => setGalleryNewAlbumDate(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+              Description (optional)
+              <input maxLength={500} value={galleryNewAlbumDescription} onChange={(event) => setGalleryNewAlbumDescription(event.target.value)} placeholder="A short event description" style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+            </label>
+            <button type="submit" style={{ border: 0, borderRadius: 8, padding: '11px 14px', fontWeight: 700, cursor: 'pointer', color: '#fff', background: '#1a2744' }}>Create album</button>
+          </form>
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 18 }}>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Manage albums</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
+                Search by event name
+                <input type="search" value={galleryAlbumSearch} onChange={(event) => setGalleryAlbumSearch(event.target.value)} placeholder="Search albums..." style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
+                Filter by event date
+                <input type="date" value={galleryAlbumDateFilter} onChange={(event) => setGalleryAlbumDateFilter(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+              </label>
+            </div>
+            {galleryAlbums
+              .filter((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()))
+              .filter((album) => !galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)
+              .slice()
+              .sort((a, b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt))
+              .map((album) => (
+                <div key={album.id} style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', gap: 12, alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
+                  {album.coverImage ? <img src={album.coverImage.thumbnailUrl} alt="" style={{ width: 64, height: 56, borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 64, height: 56, borderRadius: 8, background: '#f1f5f9' }} />}
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ overflowWrap: 'anywhere' }}>{album.title}</strong>
+                    <div style={{ color: '#64748b', fontSize: 12 }}>{album.date || 'No event date'} · {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}{album.isFeatured ? ' · Featured' : ''}</div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <button type="button" onClick={() => setGallerySelectedAlbumId(album.id)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: gallerySelectedAlbumId === album.id ? '#dbeafe' : '#f1f5f9', color: '#1e3a8a' }}>
+                      {gallerySelectedAlbumId === album.id ? 'Selected for upload' : 'Select for upload'}
+                    </button>
+                    <button type="button" onClick={() => handleStartGalleryAlbumEdit(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#f1f5f9', color: '#334155' }}>Rename / edit</button>
+                    <button type="button" onClick={() => void handleFeatureGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>{album.isFeatured ? 'Unfeature album' : 'Feature album'}</button>
+                    {album.slug !== 'uncategorized' && <button type="button" onClick={() => void handleDeleteGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Delete album</button>}
+                  </div>
+                </div>
+              ))}
+            {!galleryAlbums.length && <p style={{ margin: 0, color: '#64748b' }}>Loading albums...</p>}
+            {galleryAlbums.length > 0 && !galleryAlbums.some((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()) && (!galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)) && <p style={{ margin: 0, color: '#64748b' }}>No albums match these filters.</p>}
+          </div>
+
+          {galleryAlbumEditId !== null && (
+            <form onSubmit={handleSaveGalleryAlbum} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, alignItems: 'end', marginTop: 18, padding: 16, border: '1px solid #f2d574', borderRadius: 14, background: '#fffbeb' }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+                Event name
+                <input required maxLength={120} value={galleryAlbumEditTitle} onChange={(event) => setGalleryAlbumEditTitle(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+                Event date
+                <input type="date" value={galleryAlbumEditDate} onChange={(event) => setGalleryAlbumEditDate(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+                Description
+                <input maxLength={500} value={galleryAlbumEditDescription} onChange={(event) => setGalleryAlbumEditDescription(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" style={{ border: 0, borderRadius: 8, padding: '11px 14px', fontWeight: 700, cursor: 'pointer', color: '#fff', background: '#1a2744' }}>Save changes</button>
+                <button type="button" onClick={() => setGalleryAlbumEditId(null)} style={{ border: 0, borderRadius: 8, padding: '11px 14px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Cancel</button>
+              </div>
+            </form>
+          )}
+
           <div style={{ display: 'grid', gap: 14, maxWidth: 760 }}>
             <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
-              Choose a photo folder
+              Album for these uploads
+              <select required value={gallerySelectedAlbumId ?? ''} onChange={(event) => setGallerySelectedAlbumId(event.target.value ? Number(event.target.value) : null)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}>
+                {galleryAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
+              </select>
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+              Choose multiple photos or a photo folder
               <input
                 type="file"
                 multiple
@@ -2371,7 +2786,7 @@ const DominusDashboard = () => {
                   }
                 }}
                 onChange={(event) => void handleGalleryFolderUpload(event)}
-                disabled={gallerySaving}
+                disabled={gallerySaving || gallerySelectedAlbumId === null}
               />
             </label>
             <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
@@ -2383,23 +2798,35 @@ const DominusDashboard = () => {
           <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
             <h3 style={{ margin: 0, fontSize: 18 }}>Gallery photos</h3>
             {galleryImages.length === 0 ? <p style={{ margin: 0, color: '#64748b' }}>No gallery photos uploaded yet.</p> : galleryImages.map((image) => (
-              <div key={image.id} style={{ display: 'flex', alignItems: 'center', gap: 14, border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
+              <div key={image.id} style={{ display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', alignItems: 'center', gap: 12, border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
                 <img src={image.thumbnailUrl} alt="" style={{ width: 88, height: 66, borderRadius: 8, objectFit: 'cover' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <strong>{image.caption}</strong>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ overflowWrap: 'anywhere' }}>{image.caption}</strong>
                   <div style={{ color: '#64748b', fontSize: 13 }}>{image.isFeatured ? 'Featured display photo · ' : ''}{image.status}</div>
                 </div>
-                {image.status === 'Published' && !image.isFeatured && (
-                  <button type="button" onClick={() => void handleFeatureGalleryImage(image)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>
-                    Set as display photo
-                  </button>
-                )}
-                <button type="button" onClick={() => void handleGalleryStatus(image)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: image.status === 'Published' ? '#fef3c7' : '#dcfce7', color: image.status === 'Published' ? '#92400e' : '#166534' }}>
-                  {image.status === 'Published' ? 'Unpublish' : 'Publish'}
-                </button>
-                <button type="button" onClick={() => void handleDeleteGalleryImage(image.id)} style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer' }}>
-                  Delete
-                </button>
+                <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
+                  <label style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', gap: 8, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                    Album
+                    <select value={image.albumId ?? ''} onChange={(event) => { if (event.target.value) void handleMoveGalleryImage(image, Number(event.target.value)); }} style={{ minWidth: 0, width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}>
+                      <option value="" disabled>Select album</option>
+                      {galleryAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
+                    </select>
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {image.albumId !== null && <button type="button" onClick={() => void handleSetGalleryAlbumCover(image)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>Set as album cover</button>}
+                    {image.status === 'Published' && !image.isFeatured && (
+                      <button type="button" onClick={() => void handleFeatureGalleryImage(image)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>
+                        Feature photo
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void handleGalleryStatus(image)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: image.status === 'Published' ? '#fef3c7' : '#dcfce7', color: image.status === 'Published' ? '#92400e' : '#166534' }}>
+                      {image.status === 'Published' ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button type="button" onClick={() => void handleDeleteGalleryImage(image.id)} style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer' }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -2639,10 +3066,16 @@ const DominusDashboard = () => {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
   useScrollAnimation();
-  const isDominusRoute = typeof window !== 'undefined' && (window.location.pathname === '/dominus' || window.location.pathname.startsWith('/dominus/'));
+  const currentPath = typeof window === 'undefined' ? '/' : window.location.pathname;
+  const isDominusRoute = currentPath === '/dominus' || currentPath.startsWith('/dominus/');
+  const isGalleryRoute = currentPath === '/gallery' || currentPath.startsWith('/gallery/');
 
   if (isDominusRoute) {
     return <DominusDashboard />;
+  }
+  if (isGalleryRoute) {
+    const albumSlug = currentPath.startsWith('/gallery/') ? decodeURIComponent(currentPath.slice('/gallery/'.length)) : undefined;
+    return <GalleryPage albumSlug={albumSlug} />;
   }
 
   return (
@@ -2651,13 +3084,13 @@ export default function App() {
         <Navbar />
         <HeroSection />
         <AboutSection />
+        <PastoralTeamSection />
         <ActivitiesSection />
         <CommitteesSection />
         <CommunitySection />
         <EventsSection />
         <GallerySection />
         <ArticlesSection />
-        <PastoralTeamSection />
         <OfficeHoursSection />
         <ContactSection />
         <Footer />

@@ -59,7 +59,7 @@ The workflow packages dependencies before deployment, so Azure does not need to 
 
 The app serves both the Vite-built website and `/api` from the same origin. On production startup it fails explicitly if required credentials/origins or the frontend build are missing. App Service must run the deployed package with `npm start`.
 
-In Dominus, choose a local folder containing JPG, PNG, or WebP photos (up to 5 MB each). The dashboard optimizes each photo and stores it with the gallery metadata in SQLite. Publish the photos for the site, then choose one as the featured display photo. Visitors browse the published photos in the built-in media viewer. Keep the SQLite database on persistent storage and back it up with the rest of the site data.
+In Dominus, create an event album or select an existing one, then choose multiple JPG, PNG, or WebP photos (up to 5 MB each) or a folder. The dashboard optimizes each photo and stores it with the album metadata in SQLite. Publish the photos for the site, then optionally feature an album or photo and choose an album cover. Visitors browse albums at `/gallery` and each album's photos in its detail view. Keep the SQLite database on persistent storage and back it up with the rest of the site data.
 
 SQLite is appropriate for this single-server parish site. Keep the database on persistent storage and run one application instance; use managed PostgreSQL before scaling to multiple instances. Back up with SQLite's online backup API; do not copy only the main database file while the server is running in WAL mode. The login uses a database-backed, HttpOnly, SameSite cookie session, a scrypt password hash, origin checks, and per-process login throttling.
 
@@ -70,4 +70,4 @@ SQLite is appropriate for this single-server parish site. Keep the database on p
 3. Run `npm run server` and `npm run dev` in separate terminals.
 4. Open the Vite URL and go to `/dominus`. Vite proxies `/api` requests to the local server.
 
-The first API start imports announcements from `server/data/announcements.json`, feast days from `src/data/ordoCalendar.json`, and the first article from `server/data/articles.json`. These files must be present in the deployed package for a new database; subsequent changes are stored in SQLite.
+The first API start imports announcements from `server/data/announcements.json`, feast days from `src/data/ordoCalendar.json`, and the first article from `server/data/articles.json`. It also automatically creates the reserved gallery albums and moves existing photos without an album into **General Gallery**. This album migration runs once on server startup; no manual SQL or image re-upload is needed. These seed files must be present in the deployed package for a new database; subsequent changes are stored in SQLite.

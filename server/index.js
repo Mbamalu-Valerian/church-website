@@ -85,6 +85,16 @@ database.exec(`
     color TEXT NOT NULL DEFAULT '#16a34a',
     status TEXT NOT NULL CHECK (status IN ('Draft', 'Published'))
   );
+  CREATE TABLE IF NOT EXISTS gallery_albums (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    event_date TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    cover_image_id INTEGER,
+    is_featured INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS gallery_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_id TEXT NOT NULL,
@@ -93,7 +103,9 @@ database.exec(`
     thumbnail_data TEXT NOT NULL DEFAULT '',
     viewer_url TEXT NOT NULL DEFAULT '',
     thumbnail_url TEXT NOT NULL DEFAULT '',
-    is_featured INTEGER NOT NULL DEFAULT 0
+    is_featured INTEGER NOT NULL DEFAULT 0,
+    album_id INTEGER REFERENCES gallery_albums(id) ON DELETE SET NULL,
+    uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE TABLE IF NOT EXISTS app_settings (
     setting_key TEXT PRIMARY KEY,
@@ -128,6 +140,44 @@ if (!galleryColumns.some((column) => column.name === 'thumbnail_url')) {
 }
 if (!galleryColumns.some((column) => column.name === 'is_featured')) {
   database.exec('ALTER TABLE gallery_images ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0');
+}
+if (!galleryColumns.some((column) => column.name === 'album_id')) {
+  database.exec('ALTER TABLE gallery_images ADD COLUMN album_id INTEGER REFERENCES gallery_albums(id) ON DELETE SET NULL');
+}
+if (!galleryColumns.some((column) => column.name === 'uploaded_at')) {
+  database.exec("ALTER TABLE gallery_images ADD COLUMN uploaded_at TEXT NOT NULL DEFAULT ''");
+}
+database.exec("UPDATE gallery_images SET uploaded_at = CURRENT_TIMESTAMP WHERE uploaded_at = ''");
+
+database.prepare(`
+  INSERT OR IGNORE INTO gallery_albums (title, slug, description)
+  VALUES ('Uncategorized', 'uncategorized', 'Photos not assigned to an event album.')
+`).run();
+const galleryAlbumMigration = 'gallery-albums-v1';
+const galleryAlbumMigrationApplied = database.prepare('SELECT name FROM content_migrations WHERE name = ?').get(galleryAlbumMigration);
+if (!galleryAlbumMigrationApplied) {
+  const unassignedPhotos = database.prepare('SELECT COUNT(*) AS count FROM gallery_images WHERE album_id IS NULL').get().count;
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare(`
+      INSERT OR IGNORE INTO gallery_albums (title, slug, description)
+      VALUES ('General Gallery', 'general-gallery', 'Existing gallery photos and uploads without a selected event album.')
+    `).run();
+    const generalAlbum = database.prepare("SELECT id FROM gallery_albums WHERE slug = 'general-gallery'").get();
+    if (unassignedPhotos > 0) {
+      database.prepare('UPDATE gallery_images SET album_id = ? WHERE album_id IS NULL').run(generalAlbum.id);
+    }
+    database.prepare(`
+      UPDATE gallery_albums SET cover_image_id = (
+        SELECT id FROM gallery_images WHERE album_id = ? ORDER BY id ASC LIMIT 1
+      ) WHERE id = ? AND cover_image_id IS NULL
+    `).run(generalAlbum.id, generalAlbum.id);
+    database.prepare('INSERT INTO content_migrations (name) VALUES (?)').run(galleryAlbumMigration);
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 const articleColumns = database.prepare('PRAGMA table_info(articles)').all();
@@ -258,6 +308,7 @@ const serializeFeastDay = (row) => ({
 });
 const serializeGalleryImage = (row) => ({
   id: row.id,
+  albumId: row.album_id ?? null,
   fileId: row.file_id,
   caption: row.caption,
   status: row.status,
@@ -266,8 +317,77 @@ const serializeGalleryImage = (row) => ({
     : row.thumbnail_url,
   viewerUrl: row.viewer_url,
   isFeatured: Boolean(row.is_featured),
+  uploadedAt: row.uploaded_at,
 });
-const galleryImageColumns = 'id, file_id, caption, status, thumbnail_data, viewer_url, thumbnail_url, is_featured';
+const galleryImageColumns = 'id, file_id, caption, status, thumbnail_data, viewer_url, thumbnail_url, is_featured, album_id, uploaded_at';
+const serializeGalleryAlbum = (row, coverImage = null) => ({
+  id: row.id,
+  title: row.title,
+  slug: row.slug,
+  date: row.event_date || '',
+  description: row.description,
+  coverImage,
+  isFeatured: Boolean(row.is_featured),
+  createdAt: row.created_at,
+  photoCount: Number(row.photo_count || 0),
+});
+const galleryAlbumSlug = (value) => value
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '')
+  .slice(0, 80) || 'album';
+const createUniqueAlbumSlug = (title, excludedAlbumId = null) => {
+  const baseSlug = galleryAlbumSlug(title);
+  let slug = baseSlug;
+  let suffix = 2;
+  while (database.prepare('SELECT id FROM gallery_albums WHERE slug = ? AND id != COALESCE(?, -1)').get(slug, excludedAlbumId)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+};
+const findOrCreateGalleryAlbum = (title, slug, description = '') => {
+  database.prepare(`
+    INSERT OR IGNORE INTO gallery_albums (title, slug, description) VALUES (?, ?, ?)
+  `).run(title, slug, description);
+  return database.prepare('SELECT id FROM gallery_albums WHERE slug = ?').get(slug);
+};
+const galleryAlbumCoverImage = (album) => {
+  const cover = album.cover_image_id === null
+    ? null
+    : database.prepare(`SELECT ${galleryImageColumns} FROM gallery_images WHERE id = ? AND album_id = ?`)
+      .get(album.cover_image_id, album.id);
+  if (cover) return serializeGalleryImage(cover);
+  const firstImage = database.prepare(`
+    SELECT ${galleryImageColumns} FROM gallery_images
+    WHERE album_id = ? ORDER BY id ASC LIMIT 1
+  `).get(album.id);
+  return firstImage ? serializeGalleryImage(firstImage) : null;
+};
+const listGalleryAlbums = ({ publicOnly = false } = {}) => {
+  const albums = database.prepare(`
+    SELECT a.*, COUNT(${publicOnly ? "CASE WHEN i.status = 'Published' AND (i.thumbnail_data <> '' OR (i.thumbnail_url <> '' AND i.viewer_url <> '')) THEN i.id END" : 'i.id'}) AS photo_count
+    FROM gallery_albums a
+    LEFT JOIN gallery_images i ON i.album_id = a.id
+    ${publicOnly ? "WHERE a.id IN (SELECT album_id FROM gallery_images WHERE status = 'Published' AND (thumbnail_data <> '' OR (thumbnail_url <> '' AND viewer_url <> '')))" : ''}
+    GROUP BY a.id
+    ORDER BY a.is_featured DESC, CASE WHEN a.event_date = '' THEN a.created_at ELSE a.event_date END DESC, a.id DESC
+  `).all();
+  return albums.map((album) => {
+    let coverImage = galleryAlbumCoverImage(album);
+    if (publicOnly && (!coverImage || coverImage.status !== 'Published')) {
+      const publishedCover = database.prepare(`
+        SELECT ${galleryImageColumns} FROM gallery_images
+        WHERE album_id = ? AND status = 'Published' AND (thumbnail_data <> '' OR (thumbnail_url <> '' AND viewer_url <> ''))
+        ORDER BY id ASC LIMIT 1
+      `).get(album.id);
+      coverImage = publishedCover ? serializeGalleryImage(publishedCover) : null;
+    }
+    return serializeGalleryAlbum(album, coverImage);
+  });
+};
 const parseGalleryImageData = (value) => {
   if (typeof value !== 'string') return null;
   const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
@@ -446,6 +566,31 @@ app.get('/api/public/articles', (req, res) => {
   res.json({ ok: true, data: articles });
 });
 
+app.get('/api/public/gallery/albums', (req, res) => {
+  return res.json({ ok: true, data: listGalleryAlbums({ publicOnly: true }) });
+});
+
+app.get('/api/public/gallery/albums/:slug', (req, res) => {
+  const album = database.prepare(`
+    SELECT a.*, COUNT(i.id) AS photo_count
+    FROM gallery_albums a
+    LEFT JOIN gallery_images i
+      ON i.album_id = a.id AND i.status = 'Published'
+      AND (i.thumbnail_data <> '' OR (i.thumbnail_url <> '' AND i.viewer_url <> ''))
+    WHERE a.slug = ?
+    GROUP BY a.id
+  `).get(req.params.slug);
+  if (!album || album.photo_count === 0) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  const photos = database.prepare(`
+    SELECT ${galleryImageColumns} FROM gallery_images
+    WHERE album_id = ? AND status = 'Published'
+      AND (thumbnail_data <> '' OR (thumbnail_url <> '' AND viewer_url <> ''))
+    ORDER BY is_featured DESC, id DESC
+  `).all(album.id).map(serializeGalleryImage);
+  const publicAlbum = listGalleryAlbums({ publicOnly: true }).find((item) => item.slug === album.slug);
+  return res.json({ ok: true, data: { ...publicAlbum, photos } });
+});
+
 app.get('/api/public/gallery', (req, res) => {
   const images = database.prepare(`
     SELECT ${galleryImageColumns} FROM gallery_images
@@ -477,6 +622,106 @@ app.get('/api/gallery', requireSession, (req, res) => {
   return res.json({ ok: true, data: images });
 });
 
+app.get('/api/gallery/albums', requireSession, (req, res) => {
+  return res.json({ ok: true, data: listGalleryAlbums() });
+});
+
+app.post('/api/gallery/albums', requireSession, (req, res) => {
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+  const eventDate = typeof req.body?.date === 'string' ? req.body.date.trim() : '';
+  const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+  if (!title || title.length > 120 || (eventDate && !isValidDate(eventDate)) || description.length > 1000) {
+    return res.status(400).json({ ok: false, error: 'Enter an album name (up to 120 characters), a valid event date, and a description no longer than 1000 characters.' });
+  }
+  const slug = createUniqueAlbumSlug(title);
+  const result = database.prepare(`
+    INSERT INTO gallery_albums (title, slug, event_date, description) VALUES (?, ?, ?, ?)
+  `).run(title, slug, eventDate, description);
+  const album = listGalleryAlbums().find((item) => item.id === Number(result.lastInsertRowid));
+  return res.status(201).json({ ok: true, data: album });
+});
+
+app.put('/api/gallery/albums/:id', requireSession, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ ok: false, error: 'Invalid gallery album.' });
+  const existing = database.prepare('SELECT * FROM gallery_albums WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : existing.title;
+  const eventDate = typeof req.body?.date === 'string' ? req.body.date.trim() : existing.event_date;
+  const description = typeof req.body?.description === 'string' ? req.body.description.trim() : existing.description;
+  const coverImageId = req.body?.coverImageId === undefined
+    ? existing.cover_image_id
+    : req.body.coverImageId === null ? null : Number(req.body.coverImageId);
+  if (!title || title.length > 120 || (eventDate && !isValidDate(eventDate)) || description.length > 1000) {
+    return res.status(400).json({ ok: false, error: 'Enter an album name (up to 120 characters), a valid event date, and a description no longer than 1000 characters.' });
+  }
+  if (coverImageId !== null) {
+    if (!Number.isSafeInteger(coverImageId) || coverImageId < 1) return res.status(400).json({ ok: false, error: 'Invalid cover photo.' });
+    const cover = database.prepare('SELECT id FROM gallery_images WHERE id = ? AND album_id = ?').get(coverImageId, id);
+    if (!cover) return res.status(400).json({ ok: false, error: 'The cover photo must belong to this album.' });
+  }
+  const slug = title === existing.title ? existing.slug : createUniqueAlbumSlug(title, id);
+  database.prepare(`
+    UPDATE gallery_albums SET title = ?, slug = ?, event_date = ?, description = ?, cover_image_id = ? WHERE id = ?
+  `).run(title, slug, eventDate, description, coverImageId, id);
+  const album = listGalleryAlbums().find((item) => item.id === id);
+  return res.json({ ok: true, data: album });
+});
+
+app.put('/api/gallery/albums/:id/feature', requireSession, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ ok: false, error: 'Invalid gallery album.' });
+  const album = database.prepare(`
+    SELECT a.id FROM gallery_albums a
+    WHERE a.id = ? AND EXISTS (
+      SELECT 1 FROM gallery_images i WHERE i.album_id = a.id AND i.status = 'Published'
+        AND (i.thumbnail_data <> '' OR (i.thumbnail_url <> '' AND i.viewer_url <> ''))
+    )
+  `).get(id);
+  if (!album) return res.status(404).json({ ok: false, error: 'Publish a photo in this album before featuring it.' });
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare('UPDATE gallery_albums SET is_featured = 0').run();
+    database.prepare('UPDATE gallery_albums SET is_featured = 1 WHERE id = ?').run(id);
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+  return res.json({ ok: true });
+});
+
+app.put('/api/gallery/albums/:id/unfeature', requireSession, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ ok: false, error: 'Invalid gallery album.' });
+  const result = database.prepare('UPDATE gallery_albums SET is_featured = 0 WHERE id = ?').run(id);
+  if (result.changes === 0) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  return res.json({ ok: true });
+});
+
+app.delete('/api/gallery/albums/:id', requireSession, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ ok: false, error: 'Invalid gallery album.' });
+  const album = database.prepare('SELECT id, slug FROM gallery_albums WHERE id = ?').get(id);
+  if (!album) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  if (album.slug === 'uncategorized') return res.status(400).json({ ok: false, error: 'The Uncategorized album cannot be deleted.' });
+  const uncategorized = findOrCreateGalleryAlbum('Uncategorized', 'uncategorized', 'Photos not assigned to an event album.');
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare('UPDATE gallery_images SET album_id = ? WHERE album_id = ?').run(uncategorized.id, id);
+    database.prepare('UPDATE gallery_albums SET cover_image_id = NULL, is_featured = 0 WHERE id = ?').run(id);
+    database.prepare('DELETE FROM gallery_albums WHERE id = ?').run(id);
+    const firstUncategorizedPhoto = database.prepare('SELECT id FROM gallery_images WHERE album_id = ? ORDER BY id ASC LIMIT 1').get(uncategorized.id);
+    database.prepare('UPDATE gallery_albums SET cover_image_id = ? WHERE id = ? AND cover_image_id IS NULL')
+      .run(firstUncategorizedPhoto?.id ?? null, uncategorized.id);
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+  return res.json({ ok: true, movedToAlbumId: uncategorized.id });
+});
+
 app.get('/api/gallery/:id/image', requireSession, (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.status(404).end();
@@ -498,13 +743,58 @@ app.post('/api/gallery', requireSession, (req, res) => {
       error: 'Enter an image name and a valid compressed JPEG image no larger than 1 MB.',
     });
   }
+  const requestedAlbumId = req.body?.albumId === undefined ? null : Number(req.body.albumId);
+  let album;
+  if (requestedAlbumId === null || req.body?.albumId === '') {
+    album = findOrCreateGalleryAlbum(
+      'General Gallery',
+      'general-gallery',
+      'Existing gallery photos and uploads without a selected event album.',
+    );
+  } else {
+    if (!Number.isSafeInteger(requestedAlbumId) || requestedAlbumId < 1) {
+      return res.status(400).json({ ok: false, error: 'Select a valid gallery album.' });
+    }
+    album = database.prepare('SELECT id FROM gallery_albums WHERE id = ?').get(requestedAlbumId);
+    if (!album) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  }
   const result = database.prepare(`
-    INSERT INTO gallery_images (file_id, caption, status, thumbnail_data, viewer_url, thumbnail_url)
-    VALUES ('', ?, 'Draft', ?, '', '')
-  `).run(caption, thumbnail.dataUrl);
+    INSERT INTO gallery_images (file_id, caption, status, thumbnail_data, viewer_url, thumbnail_url, album_id)
+    VALUES ('', ?, 'Draft', ?, '', '', ?)
+  `).run(caption, thumbnail.dataUrl, album.id);
+  database.prepare('UPDATE gallery_albums SET cover_image_id = ? WHERE id = ? AND cover_image_id IS NULL')
+    .run(Number(result.lastInsertRowid), album.id);
   const image = database.prepare(`SELECT ${galleryImageColumns} FROM gallery_images WHERE id = ?`)
     .get(Number(result.lastInsertRowid));
   return res.status(201).json({ ok: true, data: serializeGalleryImage(image) });
+});
+
+app.put('/api/gallery/:id/album', requireSession, (req, res) => {
+  const id = Number(req.params.id);
+  const albumId = Number(req.body?.albumId);
+  if (!Number.isSafeInteger(id) || id < 1 || !Number.isSafeInteger(albumId) || albumId < 1) {
+    return res.status(400).json({ ok: false, error: 'Select a valid photo and album.' });
+  }
+  const image = database.prepare('SELECT id, album_id FROM gallery_images WHERE id = ?').get(id);
+  if (!image) return res.status(404).json({ ok: false, error: 'Gallery image not found.' });
+  const destination = database.prepare('SELECT id FROM gallery_albums WHERE id = ?').get(albumId);
+  if (!destination) return res.status(404).json({ ok: false, error: 'Gallery album not found.' });
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare('UPDATE gallery_images SET album_id = ? WHERE id = ?').run(albumId, id);
+    if (image.album_id !== null) {
+      database.prepare('UPDATE gallery_albums SET cover_image_id = NULL WHERE id = ? AND cover_image_id = ?')
+        .run(image.album_id, id);
+    }
+    database.prepare('UPDATE gallery_albums SET cover_image_id = ? WHERE id = ? AND cover_image_id IS NULL')
+      .run(id, albumId);
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+  const updated = database.prepare(`SELECT ${galleryImageColumns} FROM gallery_images WHERE id = ?`).get(id);
+  return res.json({ ok: true, data: serializeGalleryImage(updated) });
 });
 
 app.put('/api/gallery/:id/publish', requireSession, (req, res) => {
