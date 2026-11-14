@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { publicApi, authApi, adminApi } from './lib/api';
-import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, GalleryImage } from './lib/api';
+import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, GalleryImage, PastoralImageKey, PastoralImages, PastoralTeam, PastoralTeamMember, ParishCommittee, CommunityGroupKey, CommunityItem, ParishCommunities } from './lib/api';
 
 // ─── SVG Icon Components ──────────────────────────────────────────────────────
 type IconProps = { className?: string; style?: React.CSSProperties };
@@ -492,25 +492,25 @@ const ActivitiesSection = () => {
 };
 
 // ─── Parish Committees Section ────────────────────────────────────────────────
-const CommitteesSection = () => {
-  const [filter, setFilter] = useState<'all' | 'liturgical' | 'non-liturgical'>('all');
-
-  const liturgicalCommittees = [
+const defaultCommittees: ParishCommittee[] = [
     {
+      id: 'liturgy',
       name: 'Liturgy Committee',
-      category: 'Liturgical Committee',
+      category: 'liturgical',
       meeting: 'As scheduled by the committee',
       description: 'Headed by the Parish Priest (PP), the committee coordinates and supports the parish liturgical celebrations.',
     },
     {
+      id: 'lectors',
       name: 'Board of Lectors',
-      category: 'Liturgical Committee',
+      category: 'liturgical',
       meeting: '1st & 3rd Saturdays, 5:00 PM',
       description: 'Dedicated to prayerful study, diction preparation, and the reverent proclamation of Sacred Scripture during all liturgical celebrations.',
     },
     {
+      id: 'choir',
       name: 'Parish Choir',
-      category: 'Liturgical Committee',
+      category: 'liturgical',
       meeting: 'Weekly rehearsals by individual choirs',
       description: 'Coordinating sacred liturgical music across all parish Masses through four active choirs:',
       choirList: [
@@ -520,46 +520,58 @@ const CommitteesSection = () => {
       ],
     },
     {
+      id: 'altar-knights',
       name: 'Altar Knights',
-      category: 'Liturgical Committee',
+      category: 'liturgical',
       meeting: 'Every Saturday, 8:00 AM',
       description: 'Guiding altar servers in reverence, discipline, liturgical decorum, and assisting the priests during Masses and solemn processions.',
     },
-  ];
-
-  const nonLiturgicalCommittees = [
     {
+      id: 'church-wardens',
       name: 'Board of Church Wardens',
-      category: 'Non-Liturgical Committee',
+      category: 'non-liturgical',
       meeting: '2nd Sunday of the month after 10:00 AM Mass',
       description: 'Ensuring reverent order and hospitality in church, assisting elderly and visitors, coordinating offertory processions, and maintaining sanctuary decorum.',
     },
     {
+      id: 'communications',
       name: 'Communications Committee',
-      category: 'Non-Liturgical Committee',
+      category: 'non-liturgical',
       meeting: 'Last Tuesday of the month, 6:30 PM',
       description: 'Manages information dissemination and communication activities, monthly bulletin publication, parish announcements, and website updates.',
     },
     {
+      id: 'finance',
       name: 'Finance Committee',
-      category: 'Non-Liturgical Committee',
+      category: 'non-liturgical',
       meeting: 'As scheduled by the committee',
       description: 'Supports the responsible planning, management, and reporting of parish finances.',
     },
     {
+      id: 'security',
       name: 'Security Committee',
-      category: 'Non-Liturgical Committee',
+      category: 'non-liturgical',
       meeting: 'As scheduled by the committee',
       description: 'Supports a safe and secure environment for parishioners, visitors, and parish activities.',
     },
   ];
 
+const CommitteesSection = () => {
+  const [filter, setFilter] = useState<'all' | 'liturgical' | 'non-liturgical'>('all');
+  const [committees, setCommittees] = useState<ParishCommittee[]>(defaultCommittees);
+
+  useEffect(() => {
+    publicApi.committees()
+      .then((saved) => { if (saved) setCommittees(saved); })
+      .catch((error: unknown) => console.error('Unable to load parish committee updates.', error));
+  }, []);
+
   const displayed =
     filter === 'liturgical'
-      ? liturgicalCommittees
+      ? committees.filter((item) => item.category === 'liturgical')
       : filter === 'non-liturgical'
-      ? nonLiturgicalCommittees
-      : [...liturgicalCommittees, ...nonLiturgicalCommittees];
+      ? committees.filter((item) => item.category === 'non-liturgical')
+      : committees;
 
   return (
     <section id="committees" className="py-20 section-cream">
@@ -598,21 +610,21 @@ const CommitteesSection = () => {
 
         {/* Grid of Committees */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto animate-fade-in">
-          {displayed.map((c, i) => (
+          {displayed.map((c) => (
             <div
-              key={i}
+              key={c.id}
               className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/80 hover:shadow-md hover:border-amber-400/50 transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span
                     className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                      c.category === 'Liturgical Committee'
+                      c.category === 'liturgical'
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
                         : 'bg-blue-100 text-blue-900 border border-blue-300'
                     }`}
                   >
-                    {c.category}
+                    {c.category === 'liturgical' ? 'Liturgical Committee' : 'Non-Liturgical Committee'}
                   </span>
                 </div>
                 <h3 className="text-xl font-bold mb-2 text-[#1a2744]" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -648,29 +660,109 @@ const CommitteesSection = () => {
 };
 
 // ─── Community (Societies) Section ────────────────────────────────────────────
-type CommunityItem = {
-  name: string;
-  meeting?: string;
-  time?: string;
-  states?: string;
-  subtitle?: string;
-  thanksgiving?: string;
-  details?: {
-    formalName?: string;
-    audience: string;
-    members?: string;
-    leadership?: string;
-    meetingPlace?: string;
-    patronSaintDay?: string;
-    slogan?: string;
-    mantra?: string;
-    mission?: string;
-    whatWeDo: string;
-  };
+const defaultCommunities: ParishCommunities = {
+  organizations: [
+    { id: 'cmo', name: 'Catholic Men Organization (CMO)', meeting: 'Every Second Saturday', thanksgiving: 'Every Second Sunday' },
+    { id: 'cwo', name: 'Catholic Women Organization (CWO)', meeting: 'Every First Saturday', thanksgiving: 'First Sunday after 10AM Mass' },
+    { id: 'cyon', name: 'Catholic Youth Organization (CYON)', meeting: 'Third Sunday after 8AM Mass', thanksgiving: 'Third Sunday at 8AM Mass' },
+    { id: 'children-ministry', name: 'Childrens Ministry', meeting: 'Sundays at 8:15am during Children\'s Mass', subtitle: 'Faith formation, catechism & liturgy for children' },
+    { id: 'ppc', name: 'Parish Pastoral Council (PPC)', meeting: 'Monthly Executive & General Assembly', subtitle: 'Parish consultative & pastoral governance council' },
+  ],
+  societies: [
+    { id: 'eucharistic-adorers', name: 'Eucharistic Adorers', meeting: 'Mondays, 5:00 PM' },
+    { id: 'purgatorian-society', name: 'Purgatorian Society', meeting: 'Mondays, 5:00 PM' },
+    { id: 'st-jude', name: 'St. Jude Society', meeting: 'Wednesdays, 5:00 PM' },
+    { id: 'infant-jesus', name: 'Infant Jesus of Prague', meeting: 'Novena: 16th–24th, 9-day monthly novena' },
+    { id: 'rosa-mistica', name: 'Rosa Mistica' },
+    { id: 'legion-of-mary', name: 'Legion of Mary' },
+    { id: 'holy-family', name: 'Holy Family' },
+    { id: 'blue-army', name: 'Blue Army' },
+    { id: 'queen-of-all-hearts', name: 'Queen of All Hearts' },
+    { id: 'sacred-heart-association', name: 'Association of Sacred Heart of Jesus' },
+    { id: 'block-rosary', name: 'Block Rosary' },
+    { id: 'precious-blood', name: 'Precious Blood' },
+    { id: 'st-anthony-guild', name: 'Guild of St. Anthony of Padua' },
+    { id: 'apostleship-sacred-heart', name: 'Apostleship of Sacred Heart of Jesus' },
+    { id: 'rosary-confraternity', name: 'Confraternity of the Most Holy Rosary' },
+    { id: 'our-lady-help', name: 'Our Lady Help of Christians Ministry' },
+    { id: 'st-rita', name: 'St. Rita of Cascia' },
+    { id: 'divine-mercy', name: 'Divine Mercy Devotees' },
+    { id: 'daughters-of-mary', name: 'Catholic Daughters of Mary' },
+    { id: 'sisters-united', name: 'Catholic Sisters United' },
+    { id: 'christian-mothers', name: 'Confraternity of Christian Mothers' },
+    { id: 'st-vincent-de-paul', name: 'St. Vincent de Paul' },
+    { id: 'st-monica', name: 'St. Monica Society' },
+    { id: 'perpetual-help', name: 'Confraternity of Our Mother of Perpetual Help' },
+    { id: 'dove-of-peace', name: 'Dove of Peace Charismatic Community' },
+    { id: 'associate-missionary', name: 'Associate Missionary of St. Paul' },
+  ],
+  knighthood: [
+    { id: 'knights-st-mulumba', name: 'Knights & Ladies of St. Mulumba', subtitle: 'Order of the Knights of Saint Mulumba Nigeria (KSM / LSM)', meeting: '3rd Saturday of the month' },
+    { id: 'knights-st-john', name: 'Knights & Ladies of St. John International Commandery #653', subtitle: 'Knights of St. John International & Ladies Auxiliary (KSJI / LAUX)', meeting: '3rd Saturday of the month' },
+  ],
+  states: [
+    {
+      id: 'st-anthony-community',
+      name: 'St. Anthony Catholic Community',
+      states: 'Benue/Kogi',
+      time: 'Last Sunday of every month',
+      details: {
+        formalName: 'St. Anthony Benue/Kogi Catholic Community, Holy Rosary Catholic Church Wuse',
+        audience: 'For parishioners from Benue and Kogi States.',
+        leadership: 'Headed by elected executives.',
+        patronSaintDay: '13th June.',
+        whatWeDo: 'Visit the sick, support the needy, celebrate with members in times of joy, and check up on members who have been away from meetings for a long period without prior notice.',
+      },
+    },
+    {
+      id: 'blessed-iwene-tansi',
+      name: 'Blessed Iwene Tansi',
+      states: 'Anambra/Enugu/Parts of Ebonyi',
+      time: '2nd Sunday of the month',
+      details: {
+        audience: 'For parishioners from Anambra, Enugu and parts of Ebonyi States.',
+        slogan: 'Iwene Tansi di Ngozi, Yobala anyi ayiyo: Blessed Iwene Tansi, pray for us.',
+        mantra: "O nuru ube nwanne agbakwana oso, Ofu obi ka anyi ji aga: Do not ignore a brother/sister's cry, we move with one spirit.",
+        mission: 'Grow together in Catholic faith like the early Christians in Acts 2, verses 44 to 47, in love, unity and care.',
+        whatWeDo: 'Pray and study Catechism in Igbo, share food at monthly meetings, support members in sorrow and joy, pay levies promptly, and join all Parish feasts, harvest, retreats and prayers.',
+      },
+    },
+    {
+      id: 'st-michael-yoruba',
+      name: 'St. Michael Yoruba Catholic Community',
+      states: 'Ekiti/Ogun/Osun/Oyo/Ondo/Kwara/Kogi/Lagos',
+      time: 'Last Sunday of every month',
+      details: {
+        formalName: 'St. Michael Yoruba Catholic Community, Holy Rosary Catholic Church Wuse Zone 2',
+        audience: 'For parishioners from Ekiti, Ogun, Osun, Oyo, Ondo, Kwara, Kogi and Lagos.',
+        meetingPlace: 'Civic Center.',
+        mission: 'Participate actively in all Parish programs and serve in other societies in the Parish.',
+        whatWeDo: 'Pray the Novena to St. Michael from 20th to 28th September and celebrate St. Michael Day and Thanksgiving on 29th September. Join the Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, Lenten Retreat, corporal works of mercy and quarterly Archdiocesan Meeting. Serve in Sacred Heart, St. Anthony, CWO, CMO, the Choir and other societies.',
+      },
+    },
+    { id: 'st-peter-community', name: 'St. Peter Catholic Community', states: 'Akwa Ibom/Bayelsa/Cross River/Rivers', time: '1st Sunday of the month' },
+    { id: 'st-patrick-community', name: 'St. Patrick Catholic Community', states: 'Edo/Delta', time: '2nd Sunday of the month' },
+    { id: 'st-raphael-community', name: 'St. Raphael Catholic Community', states: 'Imo/Abia/Parts of Ebonyi', time: '2nd Sunday of the month' },
+    {
+      id: 'saint-gabriel-arewa',
+      name: 'Saint Gabriel Arewa Catholic Community',
+      states: 'All Northern States',
+      time: 'Last Sunday of every month, after 8:00 AM Mass',
+      details: {
+        formalName: 'Saint Gabriel Arewa Northern Catholic Community of Holy Rosary Catholic Church, Wuse Zone 2',
+        audience: 'For parishioners from the 18 Northern States.',
+        members: '40 registered members.',
+        meetingPlace: 'Civic Centre opposite the Church.',
+        mission: 'Foster unity, fellowship, empowerment and support for members.',
+        whatWeDo: 'Pray the Novena to St. Gabriel from 20th to 28th September and celebrate Thanksgiving on 29th September. Join parish programs such as Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, and serve actively in CYON, CWO, CMO, the Choir and other societies.',
+      },
+    },
+  ],
 };
 
 const CommunitySection = () => {
   const [activeTab, setActiveTab] = useState<'organizations' | 'societies' | 'knighthood' | 'states'>('organizations');
+  const [groups, setGroups] = useState<ParishCommunities>(defaultCommunities);
   const [expandedAssociations, setExpandedAssociations] = useState<Record<string, boolean>>({});
   const [expandedTabs, setExpandedTabs] = useState<Record<string, boolean>>({
     organizations: false,
@@ -679,101 +771,11 @@ const CommunitySection = () => {
     states: false,
   });
 
-  const groups: Record<'organizations' | 'societies' | 'knighthood' | 'states', CommunityItem[]> = {
-    organizations: [
-      { name: 'Catholic Men Organization (CMO)', meeting: 'Every Second Saturday', thanksgiving: 'Every Second Sunday' },
-      { name: 'Catholic Women Organization (CWO)', meeting: 'Every First Saturday', thanksgiving: 'First Sunday after 10AM Mass' },
-      { name: 'Catholic Youth Organization (CYON)', meeting: 'Third Sunday after 8AM Mass', thanksgiving: 'Third Sunday at 8AM Mass' },
-      { name: 'Childrens Ministry', meeting: 'Sundays at 8:15am during Children\'s Mass', subtitle: 'Faith formation, catechism & liturgy for children' },
-      { name: 'Parish Pastoral Council (PPC)', meeting: 'Monthly Executive & General Assembly', subtitle: 'Parish consultative & pastoral governance council' },
-    ],
-    societies: [
-      { name: 'Eucharistic Adorers', meeting: 'Mondays, 5:00 PM' },
-      { name: 'Purgatorian Society', meeting: 'Mondays, 5:00 PM' },
-      { name: 'St. Jude Society', meeting: 'Wednesdays, 5:00 PM' },
-      { name: 'Infant Jesus of Prague', meeting: 'Novena: 16th–24th, 9-day monthly novena' },
-      { name: 'Rosa Mistica' },
-      { name: 'Legion of Mary' },
-      { name: 'Holy Family' },
-      { name: 'Blue Army' },
-      { name: 'Queen of All Hearts' },
-      { name: 'Association of Sacred Heart of Jesus' },
-      { name: 'Block Rosary' },
-      { name: 'Precious Blood' },
-      { name: 'Guild of St. Anthony of Padua' },
-      { name: 'Apostleship of Sacred Heart of Jesus' },
-      { name: 'Confraternity of the Most Holy Rosary' },
-      { name: 'Our Lady Help of Christians Ministry' },
-      { name: 'St. Rita of Cascia' },
-      { name: 'Divine Mercy Devotees' },
-      { name: 'Catholic Daughters of Mary' },
-      { name: 'Catholic Sisters United' },
-      { name: 'Confraternity of Christian Mothers' },
-      { name: 'St. Vincent de Paul' },
-      { name: 'St. Monica Society' },
-      { name: 'Confraternity of Our Mother of Perpetual Help' },
-      { name: 'Dove of Peace Charismatic Community' },
-      { name: 'Associate Missionary of St. Paul' },
-    ],
-    knighthood: [
-      { name: 'Knights & Ladies of St. Mulumba', subtitle: 'Order of the Knights of Saint Mulumba Nigeria (KSM / LSM)', meeting: '3rd Saturday of the month' },
-      { name: 'Knights & Ladies of St. John International Commandery #653', subtitle: 'Knights of St. John International & Ladies Auxiliary (KSJI / LAUX)', meeting: '3rd Saturday of the month' },
-    ],
-    states: [
-      {
-        name: 'St. Anthony Catholic Community',
-        states: 'Benue/Kogi',
-        time: 'Last Sunday of every month',
-        details: {
-          formalName: 'St. Anthony Benue/Kogi Catholic Community, Holy Rosary Catholic Church Wuse',
-          audience: 'For parishioners from Benue and Kogi States.',
-          leadership: 'Headed by elected executives.',
-          patronSaintDay: '13th June.',
-          whatWeDo: 'Visit the sick, support the needy, celebrate with members in times of joy, and check up on members who have been away from meetings for a long period without prior notice.',
-        },
-      },
-      {
-        name: 'Blessed Iwene Tansi',
-        states: 'Anambra/Enugu/Parts of Ebonyi',
-        time: '2nd Sunday of the month',
-        details: {
-          audience: 'For parishioners from Anambra, Enugu and parts of Ebonyi States.',
-          slogan: 'Iwene Tansi di Ngozi, Yobala anyi ayiyo: Blessed Iwene Tansi, pray for us.',
-          mantra: "O nuru ube nwanne agbakwana oso, Ofu obi ka anyi ji aga: Do not ignore a brother/sister's cry, we move with one spirit.",
-          mission: 'Grow together in Catholic faith like the early Christians in Acts 2, verses 44 to 47, in love, unity and care.',
-          whatWeDo: 'Pray and study Catechism in Igbo, share food at monthly meetings, support members in sorrow and joy, pay levies promptly, and join all Parish feasts, harvest, retreats and prayers.',
-        },
-      },
-      {
-        name: 'St. Michael Yoruba Catholic Community',
-        states: 'Ekiti/Ogun/Osun/Oyo/Ondo/Kwara/Kogi/Lagos',
-        time: 'Last Sunday of every month',
-        details: {
-          formalName: 'St. Michael Yoruba Catholic Community, Holy Rosary Catholic Church Wuse Zone 2',
-          audience: 'For parishioners from Ekiti, Ogun, Osun, Oyo, Ondo, Kwara, Kogi and Lagos.',
-          meetingPlace: 'Civic Center.',
-          mission: 'Participate actively in all Parish programs and serve in other societies in the Parish.',
-          whatWeDo: 'Pray the Novena to St. Michael from 20th to 28th September and celebrate St. Michael Day and Thanksgiving on 29th September. Join the Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, Lenten Retreat, corporal works of mercy and quarterly Archdiocesan Meeting. Serve in Sacred Heart, St. Anthony, CWO, CMO, the Choir and other societies.',
-        },
-      },
-      { name: 'St. Peter Catholic Community', states: 'Akwa Ibom/Bayelsa/Cross River/Rivers', time: '1st Sunday of the month' },
-      { name: 'St. Patrick Catholic Community', states: 'Edo/Delta', time: '2nd Sunday of the month' },
-      { name: 'St. Raphael Catholic Community', states: 'Imo/Abia/Parts of Ebonyi', time: '2nd Sunday of the month' },
-      {
-        name: 'Saint Gabriel Arewa Catholic Community',
-        states: 'All Northern States',
-        time: 'Last Sunday of every month, after 8:00 AM Mass',
-        details: {
-          formalName: 'Saint Gabriel Arewa Northern Catholic Community of Holy Rosary Catholic Church, Wuse Zone 2',
-          audience: 'For parishioners from the 18 Northern States.',
-          members: '40 registered members.',
-          meetingPlace: 'Civic Centre opposite the Church.',
-          mission: 'Foster unity, fellowship, empowerment and support for members.',
-          whatWeDo: 'Pray the Novena to St. Gabriel from 20th to 28th September and celebrate Thanksgiving on 29th September. Join parish programs such as Feast Day, Retreats, Cathedraticum, Harvest and Bazaar, and serve actively in CYON, CWO, CMO, the Choir and other societies.',
-        },
-      },
-    ],
-  };
+  useEffect(() => {
+    publicApi.communities()
+      .then((saved) => { if (saved) setGroups(saved); })
+      .catch((error: unknown) => console.error('Unable to load parish community updates.', error));
+  }, []);
 
   const initialCounts: Record<string, number> = {
     organizations: 4,
@@ -831,7 +833,7 @@ const CommunitySection = () => {
 
             return (
               <div
-                key={i}
+                key={item.id}
                 className="p-5 rounded-lg transition-all duration-300 hover:border-amber-500/30"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
@@ -1462,52 +1464,27 @@ const ArticlesSection = () => {
 };
 
 // ─── Pastoral Team Section ────────────────────────────────────────────────────
-const PastoralTeamSection = () => {
-  const hierarchy = [
-    {
-      name: 'Most Rev. Dr. Ignatius Ayau Kaigama',
-      title: 'Archbishop of Abuja',
-      image: '/images/archbishop.jpg',
-      specialization: 'Archbishop',
-    },
-    {
-      name: 'Most Rev. Dr. Anselm Umoren',
-      title: 'Auxiliary Bishop of Abuja',
-      image: '/images/aux-bishop.jpg',
-      specialization: 'Auxiliary Bishop',
-    },
-    {
-      name: 'His Eminence, John Cardinal Onaiyekan',
-      title: 'Archbishop Emeritus of Abuja',
-      image: '/images/cardinal.jpg',
-      specialization: 'Cardinal',
-    }
-  ];
+const pastoralTeamDefaults: PastoralTeam = {
+  hierarchy: [
+    { id: 'archbishop', name: 'Most Rev. Dr. Ignatius Ayau Kaigama', title: 'Archbishop of Abuja', image: '/images/archbishop.jpg', specialization: 'Archbishop' },
+    { id: 'auxiliaryBishop', name: 'Most Rev. Dr. Anselm Umoren', title: 'Auxiliary Bishop of Abuja', image: '/images/aux-bishop.jpg', specialization: 'Auxiliary Bishop' },
+    { id: 'cardinal', name: 'His Eminence, John Cardinal Onaiyekan', title: 'Archbishop Emeritus of Abuja', image: '/images/cardinal.jpg', specialization: 'Cardinal' },
+  ],
+  parishClergy: [
+    { id: 'parishPriest', name: 'Rev. Fr. Francis Kale', title: 'Parish Priest', image: '/images/priest1.jpg', contact: '0812 219 2192', phoneHref: 'tel:+2348122192192' },
+    { id: 'associatePriest1', name: 'Rev. Fr. Pascal Okpanachi Yahaya', title: 'Associate Priest', image: '/images/priest2.jpg', contact: 'Contact via Parish Office' },
+    { id: 'associatePriest2', name: 'Rev. Fr. Chijioke Majela', title: 'Associate Priest', image: '/images/priest3.jpg', contact: 'Contact via Parish Office' },
+  ],
+};
 
-  const parishClergy = [
-    {
-      name: 'Rev. Fr. Francis Kale',
-      title: 'Parish Priest',
-      image: '/images/priest1.jpg',
-      contact: '0812 219 2192',
-      phoneHref: 'tel:+2348122192192',
-      specialization: 'Parish Priest',
-    },
-    {
-      name: 'Rev. Fr. Pascal Okpanachi Yahaya',
-      title: 'Associate Priest',
-      image: '/images/priest2.jpg',
-      contact: 'Contact via Parish Office',
-      specialization: 'Associate Priest',
-    },
-    {
-      name: 'Rev. Fr. Chijioke Majela',
-      title: 'Associate Priest',
-      image: '/images/priest3.jpg',
-      contact: 'Contact via Parish Office',
-      specialization: 'Associate Priest',
-    },
-  ];
+const PastoralTeamSection = () => {
+  const [team, setTeam] = useState<PastoralTeam>(pastoralTeamDefaults);
+  useEffect(() => {
+    publicApi.pastoralTeam()
+      .then(setTeam)
+      .catch((error: unknown) => console.error('Unable to load pastoral team updates.', error));
+  }, []);
+  const { hierarchy, parishClergy } = team;
 
   return (
     <section id="priests" className="py-20 section-cream">
@@ -1522,14 +1499,14 @@ const PastoralTeamSection = () => {
 
         {/* Archdiocesan Hierarchy Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {hierarchy.map((leader, i) => (
-            <div key={`hierarchy-${i}`} className="priest-card">
+          {hierarchy.map((leader) => (
+            <div key={leader.id} className="priest-card">
               <div className="relative overflow-hidden" style={{ height: 320 }}>
-                <img src={leader.image} alt={leader.name} className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" />
+                {leader.image ? <img src={leader.image} alt={leader.name} className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-[#e8e4d8] text-gray-500">Photo coming soon</div>}
                 <div className="absolute bottom-0 left-0 right-0 h-24" style={{ background: 'linear-gradient(to top, rgba(26,39,68,0.9), transparent)' }} />
                 <div className="absolute bottom-4 left-4">
                   <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: 'rgba(201,168,76,0.9)', color: '#1a1a1a' }}>
-                    {leader.specialization}
+                    {leader.specialization || leader.title}
                   </span>
                 </div>
               </div>
@@ -1545,10 +1522,10 @@ const PastoralTeamSection = () => {
 
         {/* Parish Clergy Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {parishClergy.map((priest, i) => (
-            <div key={`priest-${i}`} className="priest-card">
+          {parishClergy.map((priest) => (
+            <div key={priest.id} className="priest-card">
               <div className="relative overflow-hidden" style={{ height: 320 }}>
-                <img src={priest.image} alt={priest.name} className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" />
+                {priest.image ? <img src={priest.image} alt={priest.name} className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center bg-[#e8e4d8] text-gray-500">Photo coming soon</div>}
                 <div className="absolute bottom-0 left-0 right-0 h-24" style={{ background: 'linear-gradient(to top, rgba(26,39,68,0.9), transparent)' }} />
                 <div className="absolute bottom-4 left-4">
                   <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: 'rgba(201,168,76,0.9)', color: '#1a1a1a' }}>
@@ -1558,13 +1535,13 @@ const PastoralTeamSection = () => {
               </div>
               <div className="p-6 text-center">
                 <h3 className="text-xl font-bold mb-2" style={{ color: '#1a2744', fontFamily: 'Playfair Display, serif' }}>{priest.name}</h3>
-                {priest.phoneHref ? <a href={priest.phoneHref} className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" style={{ background: 'rgba(201,168,76,0.1)', color: '#1a2744' }} aria-label={`Call ${priest.name} at ${priest.contact}`}>
+                {priest.contact && priest.phoneHref ? <a href={priest.phoneHref} className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" style={{ background: 'rgba(201,168,76,0.1)', color: '#1a2744' }} aria-label={`Call ${priest.name} at ${priest.contact}`}>
                   <PhoneIcon className="w-3.5 h-3.5" style={{ color: '#a07830' }}/>
                   {priest.contact}
-                </a> : <div className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.1)', color: '#1a2744' }}>
+                </a> : priest.contact ? <div className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.1)', color: '#1a2744' }}>
                   <PhoneIcon className="w-3.5 h-3.5" style={{ color: '#a07830' }}/>
                   {priest.contact}
-                </div>}
+                </div> : null}
               </div>
             </div>
           ))}
@@ -2007,6 +1984,7 @@ const BackToTop = () => {
 const DominusDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [articles, setArticles] = useState<ParishArticle[]>([]);
@@ -2048,6 +2026,22 @@ const DominusDashboard = () => {
   const [galleryError, setGalleryError] = useState('');
   const [gallerySaving, setGallerySaving] = useState(false);
   const [galleryMessage, setGalleryMessage] = useState('');
+  const [pastoralImages, setPastoralImages] = useState<PastoralImages>({});
+  const [pastoralTeam, setPastoralTeam] = useState<PastoralTeam>(pastoralTeamDefaults);
+  const [pastoralTeamDirty, setPastoralTeamDirty] = useState(false);
+  const [pastoralTeamSaving, setPastoralTeamSaving] = useState(false);
+  const [pastoralImageError, setPastoralImageError] = useState('');
+  const [pastoralImageMessage, setPastoralImageMessage] = useState('');
+  const [savingPastoralImage, setSavingPastoralImage] = useState<PastoralImageKey | null>(null);
+  const [committees, setCommittees] = useState<ParishCommittee[]>(defaultCommittees);
+  const [communities, setCommunities] = useState<ParishCommunities>(defaultCommunities);
+  const [communityEditGroup, setCommunityEditGroup] = useState<CommunityGroupKey>('organizations');
+  const [committeeContentDirty, setCommitteeContentDirty] = useState(false);
+  const [communityContentDirty, setCommunityContentDirty] = useState(false);
+  const [committeeContentSaving, setCommitteeContentSaving] = useState(false);
+  const [communityContentSaving, setCommunityContentSaving] = useState(false);
+  const [committeeContentError, setCommitteeContentError] = useState('');
+  const [committeeContentMessage, setCommitteeContentMessage] = useState('');
 
   const errorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
@@ -2095,6 +2089,35 @@ const DominusDashboard = () => {
     }
   };
 
+  const fetchPastoralContent = async () => {
+    try {
+      const [images, team] = await Promise.all([
+        adminApi.listPastoralImages(),
+        adminApi.listPastoralTeam(),
+      ]);
+      setPastoralImages(images);
+      setPastoralTeam(team);
+      setPastoralTeamDirty(false);
+      setPastoralImageError('');
+    } catch (error) {
+      setPastoralImageError(errorMessage(error, 'Unable to load the pastoral team. Refresh and try again.'));
+    }
+  };
+
+  const fetchParishContent = async () => {
+    try {
+      const [savedCommittees, savedCommunities] = await Promise.all([
+        adminApi.listCommittees(),
+        adminApi.listCommunities(),
+      ]);
+      if (savedCommittees) setCommittees(savedCommittees);
+      if (savedCommunities) setCommunities(savedCommunities);
+      setCommitteeContentError('');
+    } catch (error) {
+      setCommitteeContentError(errorMessage(error, 'Unable to load committees and communities. Refresh and try again.'));
+    }
+  };
+
   useEffect(() => {
     authApi.isAdmin()
       .then(setIsAuthenticated)
@@ -2109,7 +2132,239 @@ const DominusDashboard = () => {
     void fetchFeastDays();
     void fetchGalleryImages();
     void fetchGalleryAlbums();
+    void fetchPastoralContent();
+    void fetchParishContent();
   }, [isAuthenticated]);
+
+  const updateCommittee = (id: string, changes: Partial<ParishCommittee>) => {
+    setCommittees((current) => current.map((item) => item.id === id ? { ...item, ...changes } : item));
+    setCommitteeContentDirty(true);
+    setCommitteeContentError('');
+    setCommitteeContentMessage('');
+  };
+
+  const addCommittee = () => {
+    setCommittees((current) => [...current, {
+      id: `committee-${crypto.randomUUID()}`,
+      name: '',
+      category: 'liturgical',
+      meeting: '',
+      description: '',
+    }]);
+    setCommitteeContentDirty(true);
+  };
+
+  const removeCommittee = (id: string) => {
+    if (!window.confirm('Remove this committee from the website?')) return;
+    setCommittees((current) => current.filter((item) => item.id !== id));
+    setCommitteeContentDirty(true);
+  };
+
+  const saveCommittees = async () => {
+    setCommitteeContentSaving(true);
+    setCommitteeContentError('');
+    setCommitteeContentMessage('');
+    try {
+      const saved = await adminApi.updateCommittees(committees);
+      setCommittees(saved);
+      setCommitteeContentDirty(false);
+      setCommitteeContentMessage('Parish committees saved.');
+    } catch (error) {
+      setCommitteeContentError(errorMessage(error, 'Unable to save parish committees.'));
+    } finally {
+      setCommitteeContentSaving(false);
+    }
+  };
+
+  const discardParishContentChanges = async () => {
+    setCommitteeContentError('');
+    try {
+      const [savedCommittees, savedCommunities] = await Promise.all([
+        adminApi.listCommittees(),
+        adminApi.listCommunities(),
+      ]);
+      setCommittees(savedCommittees || defaultCommittees);
+      setCommunities(savedCommunities || defaultCommunities);
+      setCommitteeContentDirty(false);
+      setCommunityContentDirty(false);
+      setCommitteeContentMessage('');
+    } catch (error) {
+      setCommitteeContentError(errorMessage(error, 'Unable to reload saved parish information.'));
+    }
+  };
+
+  const updateCommunity = (id: string, changes: Partial<CommunityItem>) => {
+    setCommunities((current) => ({
+      ...current,
+      [communityEditGroup]: current[communityEditGroup].map((item) => item.id === id ? { ...item, ...changes } : item),
+    }));
+    setCommunityContentDirty(true);
+    setCommitteeContentError('');
+    setCommitteeContentMessage('');
+  };
+
+  const updateCommunityDetails = (id: string, field: keyof NonNullable<CommunityItem['details']>, value: string) => {
+    const item = communities[communityEditGroup].find((entry) => entry.id === id);
+    if (!item) return;
+    updateCommunity(id, { details: { ...item.details, [field]: value } });
+  };
+
+  const addCommunity = () => {
+    setCommunities((current) => ({
+      ...current,
+      [communityEditGroup]: [...current[communityEditGroup], {
+        id: `community-${crypto.randomUUID()}`,
+        name: '',
+        details: communityEditGroup === 'states' ? { audience: '', whatWeDo: '' } : undefined,
+      }],
+    }));
+    setCommunityContentDirty(true);
+  };
+
+  const removeCommunity = (id: string) => {
+    if (!window.confirm('Remove this item from the community section?')) return;
+    setCommunities((current) => ({
+      ...current,
+      [communityEditGroup]: current[communityEditGroup].filter((item) => item.id !== id),
+    }));
+    setCommunityContentDirty(true);
+  };
+
+  const saveCommunities = async () => {
+    setCommunityContentSaving(true);
+    setCommitteeContentError('');
+    setCommitteeContentMessage('');
+    try {
+      const saved = await adminApi.updateCommunities(communities);
+      setCommunities(saved);
+      setCommunityContentDirty(false);
+      setCommitteeContentMessage('Parish communities saved.');
+    } catch (error) {
+      setCommitteeContentError(errorMessage(error, 'Unable to save parish communities.'));
+    } finally {
+      setCommunityContentSaving(false);
+    }
+  };
+
+  const updatePastoralTeamMember = (id: string, changes: Partial<PastoralTeamMember>) => {
+    setPastoralTeam((current) => ({
+      hierarchy: current.hierarchy.map((member) => member.id === id ? { ...member, ...changes } : member),
+      parishClergy: current.parishClergy.map((member) => member.id === id ? { ...member, ...changes } : member),
+    }));
+    setPastoralTeamDirty(true);
+    setPastoralImageError('');
+    setPastoralImageMessage('');
+  };
+
+  const addPastoralTeamMember = (group: keyof PastoralTeam) => {
+    const member: PastoralTeamMember = {
+      id: `team-${crypto.randomUUID()}`,
+      name: '',
+      title: '',
+      image: '',
+      ...(group === 'parishClergy' ? { contact: '' } : { specialization: '' }),
+    };
+    setPastoralTeam((current) => ({ ...current, [group]: [...current[group], member] }));
+    setPastoralTeamDirty(true);
+  };
+
+  const removePastoralTeamMember = (group: keyof PastoralTeam, id: string) => {
+    if (!window.confirm('Remove this member from the Pastoral Team section?')) return;
+    setPastoralTeam((current) => ({ ...current, [group]: current[group].filter((member) => member.id !== id) }));
+    setPastoralTeamDirty(true);
+    setPastoralImageMessage('');
+  };
+
+  const movePastoralTeamMember = (group: keyof PastoralTeam, id: string, destination: keyof PastoralTeam) => {
+    if (group === destination) return;
+    const member = pastoralTeam[group].find((item) => item.id === id);
+    if (!member) return;
+    setPastoralTeam((current) => ({
+      ...current,
+      [group]: current[group].filter((item) => item.id !== id),
+      [destination]: [...current[destination], member],
+    }));
+    setPastoralTeamDirty(true);
+  };
+
+  const reorderPastoralTeamMember = (group: keyof PastoralTeam, index: number, offset: -1 | 1) => {
+    setPastoralTeam((current) => {
+      const members = [...current[group]];
+      const target = index + offset;
+      if (target < 0 || target >= members.length) return current;
+      [members[index], members[target]] = [members[target], members[index]];
+      return { ...current, [group]: members };
+    });
+    setPastoralTeamDirty(true);
+  };
+
+  const savePastoralTeam = async () => {
+    setPastoralTeamSaving(true);
+    setPastoralImageError('');
+    setPastoralImageMessage('');
+    try {
+      const saved = await adminApi.updatePastoralTeam(pastoralTeam);
+      setPastoralTeam(saved);
+      setPastoralTeamDirty(false);
+      setPastoralImageMessage('Pastoral Team details saved to the website.');
+    } catch (error) {
+      setPastoralImageError(errorMessage(error, 'Unable to save the Pastoral Team details.'));
+    } finally {
+      setPastoralTeamSaving(false);
+    }
+  };
+
+  const discardPastoralTeamChanges = async () => {
+    setPastoralImageError('');
+    try {
+      setPastoralTeam(await adminApi.listPastoralTeam());
+      setPastoralTeamDirty(false);
+      setPastoralImageMessage('');
+    } catch (error) {
+      setPastoralImageError(errorMessage(error, 'Unable to reload the saved pastoral team.'));
+    }
+  };
+
+  const handlePastoralImageUpload = async (key: PastoralImageKey, file: File | undefined) => {
+    if (!file) return;
+    setPastoralImageError('');
+    setPastoralImageMessage('');
+    if (
+      !(['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        || /\.(jpe?g|png|webp)$/i.test(file.name))
+    ) {
+      setPastoralImageError('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPastoralImageError('The selected photo is larger than 10 MB. Choose a smaller image.');
+      return;
+    }
+    setSavingPastoralImage(key);
+    try {
+      const imageData = await compressGalleryImage(file);
+      setPastoralImages(await adminApi.updatePastoralImage(key, imageData));
+      setPastoralImageMessage('Pastoral team photo updated on the website.');
+    } catch (error) {
+      setPastoralImageError(errorMessage(error, 'Unable to update this pastoral team photo.'));
+    } finally {
+      setSavingPastoralImage(null);
+    }
+  };
+
+  const handleResetPastoralImage = async (key: PastoralImageKey) => {
+    setPastoralImageError('');
+    setPastoralImageMessage('');
+    setSavingPastoralImage(key);
+    try {
+      setPastoralImages(await adminApi.updatePastoralImage(key, null));
+      setPastoralImageMessage('Original pastoral team photo restored.');
+    } catch (error) {
+      setPastoralImageError(errorMessage(error, 'Unable to restore the original pastoral team photo.'));
+    } finally {
+      setSavingPastoralImage(null);
+    }
+  };
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -2480,59 +2735,82 @@ const DominusDashboard = () => {
     setFeastDays([]);
     setGalleryImages([]);
     setGalleryAlbums([]);
+    setPastoralImages({});
   };
 
   if (!isAuthenticated) {
     if (loading) return <div role="status" style={{ padding: 32, color: '#1a2744' }}>Checking secure session...</div>;
     return (
       <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        minHeight: '100dvh',
+        boxSizing: 'border-box',
+        display: 'grid',
+        placeItems: 'center',
         background: 'linear-gradient(135deg, #0f172a 0%, #1a2744 100%)',
-        padding: '24px',
+        padding: 16,
       }}>
         <div style={{
           width: '100%',
-          maxWidth: 420,
+          maxWidth: 460,
+          boxSizing: 'border-box',
           background: '#fff',
           borderRadius: 20,
           boxShadow: '0 25px 80px rgba(15, 23, 42, 0.3)',
-          padding: 32,
+          padding: 24,
         }}>
-          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#b9952a', fontWeight: 700 }}>
-              Private Access
-            </p>
-            <h1 style={{ margin: '12px 0 4px', color: '#1a2744', fontSize: 30, fontFamily: 'Playfair Display, serif' }}>
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <img src="/images/holy_rosary_seal_cutout.png" alt="Holy Rosary Catholic Church seal" style={{ display: 'block', width: 68, height: 68, objectFit: 'contain', margin: '0 auto 6px' }} />
+            <h1 style={{ margin: '4px 0', color: '#1a2744', fontSize: 40, fontWeight: 800, lineHeight: 1.15, fontFamily: 'Playfair Display, serif' }}>
               Dominus
             </h1>
           </div>
 
-          <form onSubmit={handleLogin} style={{ display: 'grid', gap: 16 }}>
+          <form onSubmit={handleLogin} style={{ display: 'grid', gap: 14 }}>
             <div>
               <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#1a2744' }}>Username</label>
               <input
                 type="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={loginData.username}
-                onChange={(event) => setLoginData((current) => ({ ...current, username: event.target.value }))}
+                onChange={(event) => {
+                  setLoginData((current) => ({ ...current, username: event.target.value }));
+                  setLoginError('');
+                }}
                 placeholder="Enter your username"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #d8dce3', fontSize: 15 }}
+                style={{ boxSizing: 'border-box', width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #d8dce3', fontSize: 15 }}
               />
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#1a2744' }}>Password</label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={loginData.password}
-                onChange={(event) => setLoginData((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Enter your password"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #d8dce3', fontSize: 15 }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={loginData.password}
+                  onChange={(event) => {
+                    setLoginData((current) => ({ ...current, password: event.target.value }));
+                    setLoginError('');
+                  }}
+                  placeholder="Enter your password"
+                  style={{ boxSizing: 'border-box', width: '100%', padding: '12px 68px 12px 14px', borderRadius: 10, border: '1px solid #d8dce3', fontSize: 15 }}
+                />
+                <button
+                  type="button"
+                  aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showLoginPassword}
+                  onClick={() => setShowLoginPassword((visible) => !visible)}
+                  style={{ position: 'absolute', top: '50%', right: 10, transform: 'translateY(-50%)', border: 0, borderRadius: 6, padding: '6px 8px', background: 'transparent', color: '#1a2744', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {showLoginPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
 
             {loginError && (
@@ -2550,7 +2828,7 @@ const DominusDashboard = () => {
                 borderRadius: 12,
                 padding: '12px 18px',
                 fontWeight: 800,
-                fontSize: 14,
+                fontSize: 17,
                 cursor: 'pointer',
               }}
             >
@@ -2593,6 +2871,18 @@ const DominusDashboard = () => {
           </button>
         </header>
 
+        <nav aria-label="Dashboard sections" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+          {[
+            ['dominus-pastoral-team', 'Pastoral Team'],
+            ['dominus-committees', 'Parish Committees'],
+            ['dominus-communities', 'Communities & Societies'],
+          ].map(([href, label]) => (
+            <a key={href} href={`#${href}`} style={{ border: '1px solid #d8dee9', borderRadius: 999, padding: '9px 14px', color: '#1a2744', background: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              {label}
+            </a>
+          ))}
+        </nav>
+
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 28 }}>
           {healthCards.map((item) => (
             <div key={item.label} style={{ background: '#fff', borderRadius: 18, padding: 20, boxShadow: '0 10px 28px rgba(26,39,68,0.06)' }}>
@@ -2600,6 +2890,243 @@ const DominusDashboard = () => {
               <div style={{ marginTop: 12, fontSize: 28, fontWeight: 800 }}>{item.value}</div>
             </div>
           ))}
+        </section>
+
+        <section id="dominus-pastoral-team" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div>
+            <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Website Appearance</p>
+            <h2 style={{ margin: '6px 0 0', fontSize: 22 }}>Pastoral Team</h2>
+            <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>
+              Edit names, roles, contacts, photos, and the order of everyone displayed in this section.
+            </p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {pastoralTeamDirty && (
+                <button
+                  type="button"
+                  onClick={() => void discardPastoralTeamChanges()}
+                  disabled={pastoralTeamSaving || savingPastoralImage !== null}
+                  style={{ border: 0, borderRadius: 10, padding: '11px 14px', fontWeight: 700, cursor: 'pointer', color: '#334155', background: '#e2e8f0' }}
+                >
+                  Discard changes
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void savePastoralTeam()}
+                disabled={!pastoralTeamDirty || pastoralTeamSaving || savingPastoralImage !== null}
+                style={{ border: 0, borderRadius: 10, padding: '11px 16px', fontWeight: 800, cursor: pastoralTeamDirty && !pastoralTeamSaving ? 'pointer' : 'not-allowed', color: '#1a2744', background: pastoralTeamDirty ? 'linear-gradient(135deg, #d4af37, #b9952a)' : '#e2e8f0' }}
+              >
+                {pastoralTeamSaving ? 'Saving team...' : pastoralTeamDirty ? 'Save Pastoral Team' : 'Team saved'}
+              </button>
+            </div>
+          </div>
+          {pastoralImageError && <p role="alert" style={{ margin: '0 0 12px', color: '#b42318', fontSize: 13 }}>{pastoralImageError}</p>}
+          {pastoralImageMessage && <p role="status" style={{ margin: '0 0 12px', color: '#166534', fontSize: 13 }}>{pastoralImageMessage}</p>}
+          <div style={{ display: 'grid', gap: 24 }}>
+            {([
+              { key: 'hierarchy' as const, label: 'Archdiocesan Leadership', members: pastoralTeam.hierarchy },
+              { key: 'parishClergy' as const, label: 'Parish Clergy', members: pastoralTeam.parishClergy },
+            ]).map(({ key: group, label, members }) => (
+              <div key={group} style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>{label}</h3>
+                  <button
+                    type="button"
+                    disabled={pastoralTeamSaving}
+                    onClick={() => addPastoralTeamMember(group)}
+                    style={{ border: 0, borderRadius: 8, padding: '8px 12px', fontWeight: 700, cursor: 'pointer', background: '#e0f2fe', color: '#075985' }}
+                  >
+                    Add member
+                  </button>
+                </div>
+                {members.length === 0 && <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>No members in this group.</p>}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
+                  {members.map((member, index) => {
+                    const imageUrl = pastoralImages[member.id] || member.image;
+                    const isSaving = savingPastoralImage === member.id;
+                    return (
+                      <article key={member.id} style={{ minWidth: 0, overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: 14, background: '#fafbfd' }}>
+                        {imageUrl
+                          ? <img src={imageUrl} alt={member.name || 'Pastoral team member'} style={{ display: 'block', width: '100%', height: 190, objectFit: 'cover', objectPosition: 'top' }} />
+                          : <div style={{ display: 'flex', width: '100%', height: 190, alignItems: 'center', justifyContent: 'center', background: '#e8e4d8', color: '#64748b' }}>Photo not set</div>}
+                        <div style={{ display: 'grid', gap: 10, padding: 14 }}>
+                          <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                            Name
+                            <input maxLength={120} value={member.name} onChange={(event) => updatePastoralTeamMember(member.id, { name: event.target.value })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                          </label>
+                          <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                            Role / title
+                            <input maxLength={120} value={member.title} onChange={(event) => updatePastoralTeamMember(member.id, { title: event.target.value })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                          </label>
+                          {group === 'hierarchy' ? (
+                            <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                              Badge text
+                              <input maxLength={120} value={member.specialization || ''} onChange={(event) => updatePastoralTeamMember(member.id, { specialization: event.target.value })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                            </label>
+                          ) : (
+                            <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                              Contact details
+                              <input maxLength={120} value={member.contact || ''} onChange={(event) => updatePastoralTeamMember(member.id, { contact: event.target.value, phoneHref: undefined })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                            </label>
+                          )}
+                          <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                            Change photo
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={savingPastoralImage !== null || pastoralTeamDirty || pastoralTeamSaving}
+                              onChange={(event) => {
+                                const file = event.currentTarget.files?.[0];
+                                event.currentTarget.value = '';
+                                void handlePastoralImageUpload(member.id, file);
+                              }}
+                              style={{ width: '100%', minWidth: 0, fontSize: 12 }}
+                            />
+                          </label>
+                          {pastoralTeamDirty && <span style={{ color: '#92400e', fontSize: 11 }}>Save team edits before changing photos.</span>}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                            <button type="button" disabled={index === 0 || pastoralTeamSaving} onClick={() => reorderPastoralTeamMember(group, index, -1)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Move up</button>
+                            <button type="button" disabled={index === members.length - 1 || pastoralTeamSaving} onClick={() => reorderPastoralTeamMember(group, index, 1)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Move down</button>
+                            <select aria-label={`Group for ${member.name || 'new member'}`} value={group} disabled={pastoralTeamSaving} onChange={(event) => movePastoralTeamMember(group, member.id, event.target.value === 'hierarchy' ? 'hierarchy' : 'parishClergy')} style={{ flex: 1, minWidth: 140, padding: '7px 9px', border: '1px solid #cbd5e1', borderRadius: 7, background: '#fff' }}>
+                              <option value="hierarchy">Leadership</option>
+                              <option value="parishClergy">Parish clergy</option>
+                            </select>
+                            <button type="button" disabled={pastoralTeamSaving} onClick={() => removePastoralTeamMember(group, member.id)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Remove</button>
+                          </div>
+                          {pastoralImages[member.id] && (
+                            <button
+                              type="button"
+                              disabled={savingPastoralImage !== null || pastoralTeamDirty}
+                              onClick={() => void handleResetPastoralImage(member.id)}
+                              style={{ border: 0, borderRadius: 8, padding: '9px 11px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}
+                            >
+                              {isSaving ? 'Saving...' : 'Restore original photo'}
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: '14px 0 0', color: '#64748b', fontSize: 12 }}>
+            Save team edits before updating photos. JPG, PNG, or WebP files up to 10 MB are accepted before optimization; saved images are limited to 1 MB.
+          </p>
+        </section>
+
+        <section id="dominus-committees" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div>
+              <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Information</p>
+              <h2 style={{ margin: '6px 0 0', fontSize: 22 }}>Parish Committees</h2>
+              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>Edit committee details or add a new liturgical or non-liturgical committee.</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={addCommittee} disabled={committeeContentSaving} style={{ border: 0, borderRadius: 8, padding: '9px 12px', fontWeight: 700, cursor: 'pointer', background: '#e0f2fe', color: '#075985' }}>Add committee</button>
+              {(committeeContentDirty || communityContentDirty) && <button type="button" onClick={() => void discardParishContentChanges()} disabled={committeeContentSaving || communityContentSaving} style={{ border: 0, borderRadius: 8, padding: '9px 12px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Discard changes</button>}
+              <button type="button" onClick={() => void saveCommittees()} disabled={!committeeContentDirty || committeeContentSaving} style={{ border: 0, borderRadius: 8, padding: '9px 12px', fontWeight: 800, cursor: committeeContentDirty ? 'pointer' : 'not-allowed', background: committeeContentDirty ? '#d4af37' : '#e2e8f0', color: '#1a2744' }}>{committeeContentSaving ? 'Saving...' : 'Save committees'}</button>
+            </div>
+          </div>
+          {committeeContentError && <p role="alert" style={{ color: '#b42318', fontSize: 13 }}>{committeeContentError}</p>}
+          {committeeContentMessage && <p role="status" style={{ color: '#166534', fontSize: 13 }}>{committeeContentMessage}</p>}
+          <div style={{ display: 'grid', gap: 12 }}>
+            {committees.map((item) => (
+              <article key={item.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, padding: 14, border: '1px solid #e2e8f0', borderRadius: 12, background: '#fafbfd' }}>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Committee name
+                  <input maxLength={120} value={item.name} onChange={(event) => updateCommittee(item.id, { name: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Subsection
+                  <select value={item.category} onChange={(event) => updateCommittee(item.id, { category: event.target.value === 'non-liturgical' ? 'non-liturgical' : 'liturgical' })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}>
+                    <option value="liturgical">Liturgical Committee</option>
+                    <option value="non-liturgical">Non-Liturgical Committee</option>
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Meeting schedule
+                  <input maxLength={500} value={item.meeting} onChange={(event) => updateCommittee(item.id, { meeting: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, gridColumn: '1 / -1' }}>Description
+                  <textarea rows={3} maxLength={2000} value={item.description} onChange={(event) => updateCommittee(item.id, { description: event.target.value })} style={{ resize: 'vertical', padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                {item.choirList && <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, gridColumn: '1 / -1' }}>Additional schedule items (one per line)
+                  <textarea rows={3} maxLength={3000} value={item.choirList.join('\n')} onChange={(event) => updateCommittee(item.id, { choirList: event.target.value.split('\n').slice(0, 30) })} style={{ resize: 'vertical', padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>}
+                {!item.choirList && <button type="button" onClick={() => updateCommittee(item.id, { choirList: [''] })} style={{ justifySelf: 'start', border: 0, borderRadius: 8, padding: '8px 10px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>Add schedule details</button>}
+                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => removeCommittee(item.id)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Remove committee</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="dominus-communities" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div>
+              <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Information</p>
+              <h2 style={{ margin: '6px 0 0', fontSize: 22 }}>Communities & Societies</h2>
+              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>Choose a subsection to edit, add, or remove its entries and their information.</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button type="button" onClick={addCommunity} disabled={communityContentSaving} style={{ border: 0, borderRadius: 8, padding: '9px 12px', fontWeight: 700, cursor: 'pointer', background: '#e0f2fe', color: '#075985' }}>Add to subsection</button>
+              <button type="button" onClick={() => void saveCommunities()} disabled={!communityContentDirty || communityContentSaving} style={{ border: 0, borderRadius: 8, padding: '9px 12px', fontWeight: 800, cursor: communityContentDirty ? 'pointer' : 'not-allowed', background: communityContentDirty ? '#d4af37' : '#e2e8f0', color: '#1a2744' }}>{communityContentSaving ? 'Saving...' : 'Save communities'}</button>
+            </div>
+          </div>
+          <label style={{ display: 'grid', gap: 5, maxWidth: 400, marginBottom: 16, fontSize: 12, fontWeight: 700 }}>Community subsection
+            <select value={communityEditGroup} onChange={(event) => setCommunityEditGroup(event.target.value as CommunityGroupKey)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}>
+              <option value="organizations">Statutory Organizations</option>
+              <option value="societies">Pious Societies</option>
+              <option value="knighthood">Knighthood</option>
+              <option value="states">State Associations</option>
+            </select>
+          </label>
+          {committeeContentError && <p role="alert" style={{ color: '#b42318', fontSize: 13 }}>{committeeContentError}</p>}
+          {committeeContentMessage && <p role="status" style={{ color: '#166534', fontSize: 13 }}>{committeeContentMessage}</p>}
+          <div style={{ display: 'grid', gap: 12 }}>
+            {communities[communityEditGroup].map((item) => (
+              <article key={item.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, padding: 14, border: '1px solid #e2e8f0', borderRadius: 12, background: '#fafbfd' }}>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Name
+                  <input maxLength={120} value={item.name} onChange={(event) => updateCommunity(item.id, { name: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Meeting / schedule
+                  <input maxLength={500} value={item.meeting || item.time || ''} onChange={(event) => updateCommunity(item.id, communityEditGroup === 'states' ? { time: event.target.value, meeting: undefined } : { meeting: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                {communityEditGroup !== 'states' && <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Subtitle / description
+                  <input maxLength={500} value={item.subtitle || ''} onChange={(event) => updateCommunity(item.id, { subtitle: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>}
+                {communityEditGroup === 'organizations' && <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>Thanksgiving schedule
+                  <input maxLength={500} value={item.thanksgiving || ''} onChange={(event) => updateCommunity(item.id, { thanksgiving: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>}
+                {communityEditGroup === 'states' && <>
+                  <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>States / region
+                    <input maxLength={500} value={item.states || ''} onChange={(event) => updateCommunity(item.id, { states: event.target.value })} style={{ minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                  </label>
+                  {([
+                    ['formalName', 'Formal name'],
+                    ['audience', 'Who the community serves'],
+                    ['members', 'Membership'],
+                    ['leadership', 'Leadership'],
+                    ['meetingPlace', 'Meeting place'],
+                    ['patronSaintDay', 'Patron saint day'],
+                    ['slogan', 'Slogan'],
+                    ['mantra', 'Mantra'],
+                    ['mission', 'Mission'],
+                    ['whatWeDo', 'What we do'],
+                  ] as Array<[keyof NonNullable<CommunityItem['details']>, string]>).map(([field, label]) => (
+                    <label key={field} style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, gridColumn: field === 'whatWeDo' ? '1 / -1' : undefined }}>{label}
+                      <textarea rows={field === 'whatWeDo' ? 3 : 2} maxLength={2000} value={item.details?.[field] || ''} onChange={(event) => updateCommunityDetails(item.id, field, event.target.value)} style={{ resize: 'vertical', padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                    </label>
+                  ))}
+                </>}
+                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => removeCommunity(item.id)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Remove entry</button>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
 
         <section style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 18 }}>

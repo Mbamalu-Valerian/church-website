@@ -40,6 +40,32 @@ const allowedOrigins = new Set(
 if (azureHostname) allowedOrigins.add(azureHostname);
 
 const feastColorValues = new Set(['#16a34a', '#ffffff', '#b91c1c', '#6b21a8']);
+const defaultPastoralImagePaths = {
+  archbishop: '/images/archbishop.jpg',
+  auxiliaryBishop: '/images/aux-bishop.jpg',
+  cardinal: '/images/cardinal.jpg',
+  parishPriest: '/images/priest1.jpg',
+  associatePriest1: '/images/priest2.jpg',
+  associatePriest2: '/images/priest3.jpg',
+};
+const defaultPastoralTeam = {
+  hierarchy: [
+    { id: 'archbishop', name: 'Most Rev. Dr. Ignatius Ayau Kaigama', title: 'Archbishop of Abuja', specialization: 'Archbishop' },
+    { id: 'auxiliaryBishop', name: 'Most Rev. Dr. Anselm Umoren', title: 'Auxiliary Bishop of Abuja', specialization: 'Auxiliary Bishop' },
+    { id: 'cardinal', name: 'His Eminence, John Cardinal Onaiyekan', title: 'Archbishop Emeritus of Abuja', specialization: 'Cardinal' },
+  ],
+  parishClergy: [
+    { id: 'parishPriest', name: 'Rev. Fr. Francis Kale', title: 'Parish Priest', contact: '0812 219 2192' },
+    { id: 'associatePriest1', name: 'Rev. Fr. Pascal Okpanachi Yahaya', title: 'Associate Priest', contact: 'Contact via Parish Office' },
+    { id: 'associatePriest2', name: 'Rev. Fr. Chijioke Majela', title: 'Associate Priest', contact: 'Contact via Parish Office' },
+  ],
+};
+const communityGroupKeys = ['organizations', 'societies', 'knighthood', 'states'];
+const committeeCategories = new Set(['liturgical', 'non-liturgical']);
+const communityDetailFields = [
+  'formalName', 'audience', 'members', 'leadership', 'meetingPlace',
+  'patronSaintDay', 'slogan', 'mantra', 'mission', 'whatWeDo',
+];
 
 if (production) {
   const missing = [];
@@ -276,6 +302,7 @@ if (!feastDaySeedApplied && fs.existsSync(feastDaySeedPath)) {
 if (process.env.DOMINUS_USERNAME && process.env.DOMINUS_PASSWORD) {
   const salt = randomBytes(16).toString('hex');
   const passwordHash = scryptSync(process.env.DOMINUS_PASSWORD, salt, 64).toString('hex');
+  database.prepare('DELETE FROM admin_users WHERE username != ?').run(process.env.DOMINUS_USERNAME);
   database.prepare(`
     INSERT INTO admin_users (username, password_salt, password_hash) VALUES (?, ?, ?)
     ON CONFLICT(username) DO UPDATE SET password_salt = excluded.password_salt, password_hash = excluded.password_hash
@@ -564,6 +591,233 @@ app.get('/api/public/articles', (req, res) => {
     WHERE status = 'Published' AND publish_date <= ? ORDER BY publish_date DESC, id DESC
   `).all(getParishDate()).map(serializeArticle);
   res.json({ ok: true, data: articles });
+});
+
+const listPastoralImages = () => Object.fromEntries(
+  database.prepare("SELECT setting_key, setting_value FROM app_settings WHERE setting_key LIKE 'pastoral-image:%'")
+    .all()
+    .map((row) => [row.setting_key.slice('pastoral-image:'.length), row.setting_value]),
+);
+const readPastoralTeamConfig = () => {
+  const saved = database.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'pastoral-team'").get();
+  return saved ? JSON.parse(saved.setting_value) : defaultPastoralTeam;
+};
+const serializePastoralTeam = () => {
+  const team = readPastoralTeamConfig();
+  const images = listPastoralImages();
+  const serializeMember = (member) => {
+    const contact = member.contact || '';
+    let phoneNumber = /^\+?[\d ()-]+$/.test(contact) && /\d/.test(contact)
+      ? contact.replace(/[^\d+]/g, '')
+      : '';
+    if (/^0\d{10}$/.test(phoneNumber)) phoneNumber = `+234${phoneNumber.slice(1)}`;
+    return {
+      ...member,
+      image: images[member.id] || defaultPastoralImagePaths[member.id] || '',
+      ...(phoneNumber ? { phoneHref: `tel:${phoneNumber}` } : {}),
+    };
+  };
+  return {
+    hierarchy: team.hierarchy.map(serializeMember),
+    parishClergy: team.parishClergy.map(serializeMember),
+  };
+};
+const validatePastoralTeam = (value) => {
+  if (!value || !Array.isArray(value.hierarchy) || !Array.isArray(value.parishClergy)
+    || value.hierarchy.length > 20 || value.parishClergy.length > 20
+    || value.hierarchy.length + value.parishClergy.length === 0) return null;
+  const ids = new Set();
+  const validateMembers = (members, group) => {
+    const output = [];
+    for (const member of members) {
+      if (!member || typeof member !== 'object'
+        || typeof member.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(member.id)
+        || ids.has(member.id)
+        || typeof member.name !== 'string' || !member.name.trim() || member.name.trim().length > 120
+        || typeof member.title !== 'string' || !member.title.trim() || member.title.trim().length > 120) return null;
+      const specialization = member.specialization === undefined ? '' : member.specialization;
+      const contact = member.contact === undefined ? '' : member.contact;
+      if (typeof specialization !== 'string' || specialization.length > 120
+        || typeof contact !== 'string' || contact.length > 120) return null;
+      ids.add(member.id);
+      output.push({
+        id: member.id,
+        name: member.name.trim(),
+        title: member.title.trim(),
+        ...(group === 'hierarchy' && specialization.trim() ? { specialization: specialization.trim() } : {}),
+        ...(group === 'parishClergy' && contact.trim() ? { contact: contact.trim() } : {}),
+      });
+    }
+    return output;
+  };
+  const hierarchy = validateMembers(value.hierarchy, 'hierarchy');
+  const parishClergy = validateMembers(value.parishClergy, 'parishClergy');
+  return hierarchy && parishClergy ? { hierarchy, parishClergy } : null;
+};
+const readSettingJson = (key) => {
+  const saved = database.prepare('SELECT setting_value FROM app_settings WHERE setting_key = ?').get(key);
+  return saved ? JSON.parse(saved.setting_value) : null;
+};
+const saveSettingJson = (key, value) => database.prepare(`
+  INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+  ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+`).run(key, JSON.stringify(value));
+const validText = (value, max = 2000) => typeof value === 'string' && value.length <= max;
+const validateCommittees = (value) => {
+  if (!Array.isArray(value) || value.length > 100) return null;
+  const ids = new Set();
+  const committees = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || typeof item.id !== 'string'
+      || !/^[a-zA-Z0-9_-]{1,80}$/.test(item.id) || ids.has(item.id)
+      || typeof item.name !== 'string' || !item.name.trim() || item.name.trim().length > 120
+      || !committeeCategories.has(item.category)
+      || !validText(item.meeting, 500) || !validText(item.description, 2000)) return null;
+    let choirList;
+    if (item.choirList !== undefined) {
+      if (!Array.isArray(item.choirList) || item.choirList.length > 30
+        || !item.choirList.every((entry) => validText(entry, 500))) return null;
+      choirList = item.choirList;
+    }
+    ids.add(item.id);
+    committees.push({
+      id: item.id,
+      name: item.name.trim(),
+      category: item.category,
+      meeting: item.meeting,
+      description: item.description,
+      ...(choirList ? { choirList } : {}),
+    });
+  }
+  return committees;
+};
+const validateCommunities = (value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const ids = new Set();
+  const result = {};
+  for (const group of communityGroupKeys) {
+    if (!Array.isArray(value[group]) || value[group].length > 100) return null;
+    result[group] = [];
+    for (const item of value[group]) {
+      if (!item || typeof item !== 'object' || typeof item.id !== 'string'
+        || !/^[a-zA-Z0-9_-]{1,80}$/.test(item.id) || ids.has(item.id)
+        || typeof item.name !== 'string' || !item.name.trim() || item.name.trim().length > 120) return null;
+      for (const field of ['meeting', 'time', 'states', 'subtitle', 'thanksgiving']) {
+        if (item[field] !== undefined && !validText(item[field], 500)) return null;
+      }
+      let details;
+      if (item.details !== undefined) {
+        if (!item.details || typeof item.details !== 'object' || Array.isArray(item.details)) return null;
+        details = {};
+        for (const field of communityDetailFields) {
+          if (item.details[field] !== undefined) {
+            if (!validText(item.details[field], 2000)) return null;
+            if (item.details[field]) details[field] = item.details[field];
+          }
+        }
+      }
+      ids.add(item.id);
+      result[group].push({
+        id: item.id,
+        name: item.name.trim(),
+        ...Object.fromEntries(['meeting', 'time', 'states', 'subtitle', 'thanksgiving']
+          .filter((field) => item[field])
+          .map((field) => [field, item[field]])),
+        ...(details && Object.keys(details).length ? { details } : {}),
+      });
+    }
+  }
+  return result;
+};
+
+app.get('/api/public/pastoral-team', (req, res) => {
+  return res.json({ ok: true, data: serializePastoralTeam() });
+});
+
+app.get('/api/pastoral-images', requireSession, (req, res) => {
+  return res.json({ ok: true, data: listPastoralImages() });
+});
+
+app.get('/api/pastoral-team', requireSession, (req, res) => {
+  return res.json({ ok: true, data: serializePastoralTeam() });
+});
+
+app.put('/api/pastoral-team', requireSession, (req, res) => {
+  const team = validatePastoralTeam(req.body);
+  if (!team) {
+    return res.status(400).json({ ok: false, error: 'Provide valid pastoral team members with names and titles (maximum 20 members per group).' });
+  }
+  const previousIds = new Set([
+    ...readPastoralTeamConfig().hierarchy,
+    ...readPastoralTeamConfig().parishClergy,
+  ].map((member) => member.id));
+  const nextIds = new Set([...team.hierarchy, ...team.parishClergy].map((member) => member.id));
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    database.prepare(`
+      INSERT INTO app_settings (setting_key, setting_value) VALUES ('pastoral-team', ?)
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+    `).run(JSON.stringify(team));
+    for (const id of previousIds) {
+      if (!nextIds.has(id)) database.prepare('DELETE FROM app_settings WHERE setting_key = ?').run(`pastoral-image:${id}`);
+    }
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+  return res.json({ ok: true, data: serializePastoralTeam() });
+});
+
+app.put('/api/pastoral-images/:key', requireSession, (req, res) => {
+  const { key } = req.params;
+  const team = readPastoralTeamConfig();
+  if (![...team.hierarchy, ...team.parishClergy].some((member) => member.id === key)) {
+    return res.status(404).json({ ok: false, error: 'Pastoral team member not found.' });
+  }
+  if (req.body?.imageData === null) {
+    database.prepare('DELETE FROM app_settings WHERE setting_key = ?').run(`pastoral-image:${key}`);
+    return res.json({ ok: true, data: listPastoralImages() });
+  }
+  const image = parseGalleryImageData(req.body?.imageData);
+  if (!image || image.contentType !== 'image/jpeg' || image.data.length > 1024 * 1024) {
+    return res.status(400).json({ ok: false, error: 'Choose a valid compressed JPEG image no larger than 1 MB.' });
+  }
+  database.prepare(`
+    INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+    ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+  `).run(`pastoral-image:${key}`, image.dataUrl);
+  return res.json({ ok: true, data: listPastoralImages() });
+});
+
+app.get('/api/public/committees', (req, res) => {
+  return res.json({ ok: true, data: readSettingJson('parish-committees') });
+});
+
+app.get('/api/committees', requireSession, (req, res) => {
+  return res.json({ ok: true, data: readSettingJson('parish-committees') });
+});
+
+app.put('/api/committees', requireSession, (req, res) => {
+  const committees = validateCommittees(req.body);
+  if (!committees) return res.status(400).json({ ok: false, error: 'Provide up to 100 committees with a name, category, meeting information, and description.' });
+  saveSettingJson('parish-committees', committees);
+  return res.json({ ok: true, data: committees });
+});
+
+app.get('/api/public/communities', (req, res) => {
+  return res.json({ ok: true, data: readSettingJson('parish-communities') });
+});
+
+app.get('/api/communities', requireSession, (req, res) => {
+  return res.json({ ok: true, data: readSettingJson('parish-communities') });
+});
+
+app.put('/api/communities', requireSession, (req, res) => {
+  const communities = validateCommunities(req.body);
+  if (!communities) return res.status(400).json({ ok: false, error: 'Provide valid community subsections with names and valid text fields.' });
+  saveSettingJson('parish-communities', communities);
+  return res.json({ ok: true, data: communities });
 });
 
 app.get('/api/public/gallery/albums', (req, res) => {

@@ -48,6 +48,52 @@ export type GalleryAlbum = {
 };
 
 export type GalleryAlbumDetail = GalleryAlbum & { photos: GalleryImage[] };
+export type PastoralImageKey = string;
+export type PastoralImages = Partial<Record<string, string>>;
+export type PastoralTeamMember = {
+  id: string;
+  name: string;
+  title: string;
+  image: string;
+  specialization?: string;
+  contact?: string;
+  phoneHref?: string;
+};
+export type PastoralTeam = {
+  hierarchy: PastoralTeamMember[];
+  parishClergy: PastoralTeamMember[];
+};
+export type ParishCommittee = {
+  id: string;
+  name: string;
+  category: 'liturgical' | 'non-liturgical';
+  meeting: string;
+  description: string;
+  choirList?: string[];
+};
+export type CommunityGroupKey = 'organizations' | 'societies' | 'knighthood' | 'states';
+export type CommunityItem = {
+  id: string;
+  name: string;
+  meeting?: string;
+  time?: string;
+  states?: string;
+  subtitle?: string;
+  thanksgiving?: string;
+  details?: {
+    formalName?: string;
+    audience?: string;
+    members?: string;
+    leadership?: string;
+    meetingPlace?: string;
+    patronSaintDay?: string;
+    slogan?: string;
+    mantra?: string;
+    mission?: string;
+    whatWeDo?: string;
+  };
+};
+export type ParishCommunities = Record<CommunityGroupKey, CommunityItem[]>;
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -109,6 +155,9 @@ export const publicApi = {
   gallery: () => request<GalleryImage[]>('/public/gallery'),
   galleryAlbums: () => request<GalleryAlbum[]>('/public/gallery/albums'),
   galleryAlbum: (slug: string) => request<GalleryAlbumDetail>(`/public/gallery/albums/${encodeURIComponent(slug)}`),
+  pastoralTeam: () => request<PastoralTeam>('/public/pastoral-team'),
+  committees: () => request<ParishCommittee[] | null>('/public/committees'),
+  communities: () => request<ParishCommunities | null>('/public/communities'),
 };
 
 export const authApi = {
@@ -130,6 +179,40 @@ export const authApi = {
 };
 
 export const adminApi = {
+  async listPastoralImages(): Promise<PastoralImages> {
+    return request('/pastoral-images');
+  },
+  async listPastoralTeam(): Promise<PastoralTeam> {
+    return request('/pastoral-team');
+  },
+  async updatePastoralTeam(team: PastoralTeam): Promise<PastoralTeam> {
+    const metadata = (members: PastoralTeamMember[]) => members.map(({ id, name, title, specialization, contact }) => ({
+      id,
+      name,
+      title,
+      ...(specialization ? { specialization } : {}),
+      ...(contact ? { contact } : {}),
+    }));
+    return request('/pastoral-team', json('PUT', {
+      hierarchy: metadata(team.hierarchy),
+      parishClergy: metadata(team.parishClergy),
+    }));
+  },
+  async listCommittees(): Promise<ParishCommittee[] | null> {
+    return request('/committees');
+  },
+  async updateCommittees(items: ParishCommittee[]): Promise<ParishCommittee[]> {
+    return request('/committees', json('PUT', items));
+  },
+  async listCommunities(): Promise<ParishCommunities | null> {
+    return request('/communities');
+  },
+  async updateCommunities(groups: ParishCommunities): Promise<ParishCommunities> {
+    return request('/communities', json('PUT', groups));
+  },
+  async updatePastoralImage(key: PastoralImageKey, imageData: string | null): Promise<PastoralImages> {
+    return request(`/pastoral-images/${encodeURIComponent(key)}`, json('PUT', { imageData }));
+  },
   async listAnnouncements(): Promise<Announcement[]> {
     return request('/announcements');
   },

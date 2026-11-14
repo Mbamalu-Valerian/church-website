@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { scryptSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
@@ -50,7 +51,16 @@ test('Dominus API protects administration and publishes notices and articles', a
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE admin_users (
+      username TEXT PRIMARY KEY,
+      password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL
+    );
   `);
+  const legacyAdminSalt = 'legacy-admin-salt';
+  legacyDatabase.prepare(`
+    INSERT INTO admin_users (username, password_salt, password_hash) VALUES (?, ?, ?)
+  `).run('dominus', legacyAdminSalt, scryptSync('test-password-that-is-not-production', legacyAdminSalt, 64).toString('hex'));
   legacyDatabase.prepare(`
     INSERT INTO gallery_images (file_id, caption, status)
     VALUES ('legacy-gallery-photo', 'Legacy Parish Photo', 'Published')
@@ -74,7 +84,7 @@ test('Dominus API protects administration and publishes notices and articles', a
     DATABASE_PATH: databasePath,
     APP_ORIGIN: origin,
     SESSION_SECRET: 'test-session-secret',
-    DOMINUS_USERNAME: 'test-dominus',
+    DOMINUS_USERNAME: 'dominus01',
     DOMINUS_PASSWORD: 'test-password-that-is-not-production',
   };
   let child;
@@ -129,10 +139,17 @@ test('Dominus API protects administration and publishes notices and articles', a
     });
     assert.equal(blockedOrigin.status, 403);
 
+    const oldUsernameLogin = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'dominus', password: 'test-password-that-is-not-production' }),
+    });
+    assert.equal(oldUsernameLogin.status, 401, 'previous admin usernames should be removed when credentials are reconfigured');
+
     const login = await fetch(`${baseUrl}/api/login`, {
       method: 'POST',
       headers: { Origin: origin, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'test-dominus', password: 'test-password-that-is-not-production' }),
+      body: JSON.stringify({ username: 'dominus01', password: 'test-password-that-is-not-production' }),
     });
     assert.equal(login.status, 200);
     const setCookie = login.headers.get('set-cookie');
@@ -142,6 +159,18 @@ test('Dominus API protects administration and publishes notices and articles', a
 
     const privateGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`);
     assert.equal(privateGalleryBeforeLogin.status, 401, 'gallery administration should require authentication');
+    const privatePastoralImagesBeforeLogin = await fetch(`${baseUrl}/api/pastoral-images`);
+    assert.equal(privatePastoralImagesBeforeLogin.status, 401, 'pastoral photo administration should require authentication');
+    const privatePastoralTeamBeforeLogin = await fetch(`${baseUrl}/api/pastoral-team`);
+    assert.equal(privatePastoralTeamBeforeLogin.status, 401, 'pastoral team administration should require authentication');
+    assert.equal((await fetch(`${baseUrl}/api/committees`)).status, 401, 'committee administration should require authentication');
+    assert.equal((await fetch(`${baseUrl}/api/communities`)).status, 401, 'community administration should require authentication');
+    const blockedPastoralImageUpdate = await fetch(`${baseUrl}/api/pastoral-images/parishPriest`, {
+      method: 'PUT',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: 'not-authorized' }),
+    });
+    assert.equal(blockedPastoralImageUpdate.status, 401, 'pastoral photo updates should require authentication');
     const privateAlbumsBeforeLogin = await fetch(`${baseUrl}/api/gallery/albums`);
     assert.equal(privateAlbumsBeforeLogin.status, 401, 'album administration should require authentication');
     let publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
@@ -161,6 +190,51 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert(generalAlbum, 'General Gallery should exist even when created by migration');
     assert.equal(generalAlbum.photoCount, 1, 'migration should preserve the existing gallery photo');
     assert(uncategorizedAlbum, 'reserved Uncategorized album should exist');
+    const initialPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
+    assert.equal(initialPastoralTeam.hierarchy.length, 3, 'the public pastoral team should include the default leadership');
+    assert.equal(initialPastoralTeam.parishClergy[0].name, 'Rev. Fr. Francis Kale', 'the public pastoral team should include the default clergy');
+    assert.equal((await (await fetch(`${baseUrl}/api/public/committees`)).json()).data, null, 'the public committee API should allow the website defaults before edits');
+    assert.equal((await (await fetch(`${baseUrl}/api/public/communities`)).json()).data, null, 'the public community API should allow the website defaults before edits');
+    const invalidCommittees = await fetch(`${baseUrl}/api/committees`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ id: 'bad', name: '', category: 'unknown', meeting: '', description: '' }]),
+    });
+    assert.equal(invalidCommittees.status, 400, 'invalid committee data should be rejected');
+    const savedCommitteesResponse = await fetch(`${baseUrl}/api/committees`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify([
+        { id: 'test-liturgy', name: 'Updated Liturgy Committee', category: 'liturgical', meeting: 'First Saturday', description: 'Coordinates liturgical events.', choirList: ['Choir practice on Tuesday'] },
+        { id: 'test-finance', name: 'New Finance Committee', category: 'non-liturgical', meeting: 'Monthly', description: 'Oversees parish finances.' },
+      ]),
+    });
+    assert.equal(savedCommitteesResponse.status, 200);
+    const savedCommittees = (await savedCommitteesResponse.json()).data;
+    assert.equal(savedCommittees[0].name, 'Updated Liturgy Committee');
+    assert.deepEqual(savedCommittees[0].choirList, ['Choir practice on Tuesday']);
+    assert.equal((await (await fetch(`${baseUrl}/api/public/committees`)).json()).data[1].name, 'New Finance Committee', 'public committee content should reflect Dominus edits');
+    const invalidCommunities = await fetch(`${baseUrl}/api/communities`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizations: [] }),
+    });
+    assert.equal(invalidCommunities.status, 400, 'community data must provide every subsection');
+    const savedCommunitiesResponse = await fetch(`${baseUrl}/api/communities`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizations: [{ id: 'test-cyon', name: 'Updated CYON', meeting: 'Third Sunday', thanksgiving: 'Sunday Mass' }],
+        societies: [{ id: 'test-society', name: 'New Society', meeting: 'Wednesdays' }],
+        knighthood: [],
+        states: [{ id: 'test-state-community', name: 'New State Community', states: 'Abia', time: 'Monthly', details: { audience: 'Parishioners from Abia.', whatWeDo: 'Serve the parish.' } }],
+      }),
+    });
+    assert.equal(savedCommunitiesResponse.status, 200);
+    const savedCommunities = (await savedCommunitiesResponse.json()).data;
+    assert.equal(savedCommunities.organizations[0].name, 'Updated CYON');
+    assert.equal(savedCommunities.states[0].details.whatWeDo, 'Serve the parish.');
+    assert.equal((await (await fetch(`${baseUrl}/api/public/communities`)).json()).data.societies[0].name, 'New Society', 'public community subsections should reflect Dominus edits');
     const invalidGalleryImage = await fetch(`${baseUrl}/api/gallery`, {
       method: 'POST',
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
@@ -171,6 +245,78 @@ test('Dominus API protects administration and publishes notices and articles', a
     });
     assert.equal(invalidGalleryImage.status, 400, 'gallery items should require an uploaded image');
     const jpegData = `data:image/jpeg;base64,${Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(100)]).toString('base64')}`;
+    const invalidPastoralTeam = await fetch(`${baseUrl}/api/pastoral-team`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hierarchy: [], parishClergy: [] }),
+    });
+    assert.equal(invalidPastoralTeam.status, 400, 'invalid pastoral team configurations should be rejected');
+    const changedPastoralTeam = {
+      hierarchy: initialPastoralTeam.hierarchy.map((member) => ({ ...member })),
+      parishClergy: [
+        { ...initialPastoralTeam.parishClergy[0], name: 'Rev. Fr. New Parish Priest', title: 'Parish Priest' },
+        ...initialPastoralTeam.parishClergy.slice(1).map((member) => ({ ...member })),
+        { id: 'new-associate', name: 'Rev. Fr. New Associate', title: 'Associate Priest', contact: 'Contact via Parish Office', image: '' },
+      ],
+    };
+    const savePastoralTeam = await fetch(`${baseUrl}/api/pastoral-team`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify(changedPastoralTeam),
+    });
+    assert.equal(savePastoralTeam.status, 200);
+    const savedPastoralTeam = (await savePastoralTeam.json()).data;
+    assert.equal(savedPastoralTeam.parishClergy[0].name, 'Rev. Fr. New Parish Priest', 'Dominus should save pastoral team names and roles');
+    assert.equal(savedPastoralTeam.parishClergy[3].id, 'new-associate', 'Dominus should support adding new team members');
+    const publicChangedPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
+    assert.equal(publicChangedPastoralTeam.parishClergy[0].title, 'Parish Priest', 'public team details should reflect the saved roster');
+    assert.equal(publicChangedPastoralTeam.parishClergy[3].name, 'Rev. Fr. New Associate');
+    const savedNewMemberPhoto = await fetch(`${baseUrl}/api/pastoral-images/new-associate`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: jpegData }),
+    });
+    assert.equal(savedNewMemberPhoto.status, 200, 'new pastoral team members should be able to receive photos');
+    const removeNewPastoralMember = await fetch(`${baseUrl}/api/pastoral-team`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hierarchy: changedPastoralTeam.hierarchy,
+        parishClergy: changedPastoralTeam.parishClergy.filter((member) => member.id !== 'new-associate'),
+      }),
+    });
+    assert.equal(removeNewPastoralMember.status, 200, 'Dominus should support removing team members');
+    assert.equal((await (await fetch(`${baseUrl}/api/pastoral-images`, { headers: { Cookie: cookie } })).json()).data['new-associate'], undefined, 'removing a member should also remove their photo override');
+    const invalidPastoralImageKey = await fetch(`${baseUrl}/api/pastoral-images/not-a-team-member`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: jpegData }),
+    });
+    assert.equal(invalidPastoralImageKey.status, 404, 'unknown pastoral team image slots should be rejected');
+    const invalidPastoralImage = await fetch(`${baseUrl}/api/pastoral-images/parishPriest`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: 'not-an-image' }),
+    });
+    assert.equal(invalidPastoralImage.status, 400, 'invalid pastoral team images should be rejected');
+    const savedPastoralImageResponse = await fetch(`${baseUrl}/api/pastoral-images/parishPriest`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: jpegData }),
+    });
+    assert.equal(savedPastoralImageResponse.status, 200);
+    assert.equal((await savedPastoralImageResponse.json()).data.parishPriest, jpegData, 'Dominus should save a pastoral team photo override');
+    let publicPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
+    assert.equal(publicPastoralTeam.parishClergy[0].image, jpegData, 'saved pastoral photos should be available on the public site');
+    const resetPastoralImageResponse = await fetch(`${baseUrl}/api/pastoral-images/parishPriest`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: null }),
+    });
+    assert.equal(resetPastoralImageResponse.status, 200);
+    assert.deepEqual((await resetPastoralImageResponse.json()).data, {}, 'Dominus should be able to restore the original pastoral team photo');
+    publicPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
+    assert.equal(publicPastoralTeam.parishClergy[0].image, '/images/priest1.jpg', 'resetting a pastoral photo should restore its default');
     const createdGalleryImageResponse = await fetch(`${baseUrl}/api/gallery`, {
       method: 'POST',
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },

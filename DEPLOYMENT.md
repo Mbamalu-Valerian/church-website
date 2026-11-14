@@ -61,6 +61,10 @@ The app serves both the Vite-built website and `/api` from the same origin. On p
 
 In Dominus, create an event album or select an existing one, then choose multiple JPG, PNG, or WebP photos (up to 5 MB each) or a folder. The dashboard optimizes each photo and stores it with the album metadata in SQLite. Publish the photos for the site, then optionally feature an album or photo and choose an album cover. Visitors browse albums at `/gallery` and each album's photos in its detail view. Keep the SQLite database on persistent storage and back it up with the rest of the site data.
 
+The **Pastoral Team** panel in Dominus lets administrators update team names, roles, contact details, photos, group placement, and display order, and add or remove team members. These edits and optimized team photos are saved in SQLite and appear on the public site; no deployment or manual migration is required.
+
+Dominus also includes **Parish Committees** and **Communities & Societies** editors. Administrators can update committee names, categories, schedules, descriptions and choir schedule details, and edit or add entries under each community subsection, including state association profiles. Changes are saved to SQLite and served to the website automatically.
+
 SQLite is appropriate for this single-server parish site. Keep the database on persistent storage and run one application instance; use managed PostgreSQL before scaling to multiple instances. Back up with SQLite's online backup API; do not copy only the main database file while the server is running in WAL mode. The login uses a database-backed, HttpOnly, SameSite cookie session, a scrypt password hash, origin checks, and per-process login throttling.
 
 ## Local Development
