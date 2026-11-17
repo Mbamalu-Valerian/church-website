@@ -159,6 +159,11 @@ test('Dominus API protects administration and publishes notices and articles', a
 
     const privateGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`);
     assert.equal(privateGalleryBeforeLogin.status, 401, 'gallery administration should require authentication');
+    const deleteGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`, {
+      method: 'DELETE',
+      headers: { Origin: origin },
+    });
+    assert.equal(deleteGalleryBeforeLogin.status, 401, 'clearing the gallery should require authentication');
     const privatePastoralImagesBeforeLogin = await fetch(`${baseUrl}/api/pastoral-images`);
     assert.equal(privatePastoralImagesBeforeLogin.status, 401, 'pastoral photo administration should require authentication');
     const privatePastoralTeamBeforeLogin = await fetch(`${baseUrl}/api/pastoral-team`);
@@ -652,6 +657,22 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert(restoredGalleryImages.some((image) => image.id === galleryImage.id && image.thumbnailUrl === `/api/public/gallery/${galleryImage.id}/image` && image.isFeatured), 'uploaded gallery images and featured selection should persist across restart');
     publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert((await publicGalleryResponse.json()).data.some((image) => image.id === galleryImage.id), 'published gallery items should persist across restart');
+    const clearGallery = await fetch(`${baseUrl}/api/gallery`, {
+      method: 'DELETE',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(clearGallery.status, 200, 'Dominus should clear all gallery photos and user albums');
+    const clearedGallery = (await clearGallery.json()).data;
+    assert.equal(clearedGallery.photosDeleted, restoredGalleryImages.length, 'the clear action should report the number of removed photos');
+    assert(clearedGallery.albumsDeleted >= 1, 'the clear action should remove user albums');
+    const clearedGalleryImages = (await (await fetch(`${baseUrl}/api/gallery`, { headers: { Cookie: cookie } })).json()).data;
+    assert.deepEqual(clearedGalleryImages, [], 'gallery photos should all be deleted');
+    const clearedGalleryAlbums = (await (await fetch(`${baseUrl}/api/gallery/albums`, { headers: { Cookie: cookie } })).json()).data;
+    assert.deepEqual(clearedGalleryAlbums.map((album) => album.slug), ['uncategorized'], 'the empty Uncategorized folder should remain for a fresh start');
+    publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
+    assert.deepEqual((await publicGalleryResponse.json()).data, [], 'deleted photos should disappear from the public gallery');
+    publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;
+    assert(publicArticles.some((article) => article.id === weeklyArticle.id), 'clearing gallery content should not delete articles');
 
     const logout = await fetch(`${baseUrl}/api/logout`, {
       method: 'POST',

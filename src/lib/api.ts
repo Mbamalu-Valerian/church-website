@@ -270,6 +270,9 @@ export const adminApi = {
   async listGalleryAlbums(): Promise<GalleryAlbum[]> {
     return request('/gallery/albums');
   },
+  async deleteAllGalleryContent(): Promise<{ photosDeleted: number; albumsDeleted: number }> {
+    return request('/gallery', json('DELETE'));
+  },
   async createGalleryAlbum(input: { title: string; date: string; description: string }): Promise<GalleryAlbum> {
     return request('/gallery/albums', json('POST', input));
   },

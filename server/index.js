@@ -892,6 +892,27 @@ app.get('/api/gallery', requireSession, (req, res) => {
   return res.json({ ok: true, data: images });
 });
 
+app.delete('/api/gallery', requireSession, (req, res) => {
+  let photosDeleted = 0;
+  let albumsDeleted = 0;
+  database.exec('BEGIN IMMEDIATE');
+  try {
+    photosDeleted = database.prepare(`
+      SELECT COUNT(*) AS count FROM gallery_images
+      WHERE thumbnail_data <> '' OR (thumbnail_url <> '' AND viewer_url <> '')
+    `).get().count;
+    albumsDeleted = database.prepare("SELECT COUNT(*) AS count FROM gallery_albums WHERE slug <> 'uncategorized'").get().count;
+    database.prepare('DELETE FROM gallery_images').run();
+    database.prepare("DELETE FROM gallery_albums WHERE slug <> 'uncategorized'").run();
+    database.prepare("UPDATE gallery_albums SET cover_image_id = NULL, is_featured = 0 WHERE slug = 'uncategorized'").run();
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw error;
+  }
+  return res.json({ ok: true, data: { photosDeleted, albumsDeleted } });
+});
+
 app.get('/api/gallery/albums', requireSession, (req, res) => {
   return res.json({ ok: true, data: listGalleryAlbums() });
 });

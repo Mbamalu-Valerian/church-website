@@ -2046,6 +2046,7 @@ const DominusDashboard = () => {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>([]);
   const [gallerySelectedAlbumId, setGallerySelectedAlbumId] = useState<number | null>(null);
+  const [galleryOpenAlbumId, setGalleryOpenAlbumId] = useState<number | null>(null);
   const [galleryNewAlbumTitle, setGalleryNewAlbumTitle] = useState('');
   const [galleryNewAlbumDate, setGalleryNewAlbumDate] = useState('');
   const [galleryNewAlbumDescription, setGalleryNewAlbumDescription] = useState('');
@@ -2058,6 +2059,9 @@ const DominusDashboard = () => {
   const [galleryError, setGalleryError] = useState('');
   const [gallerySaving, setGallerySaving] = useState(false);
   const [galleryMessage, setGalleryMessage] = useState('');
+  const [galleryDeleteAllOpen, setGalleryDeleteAllOpen] = useState(false);
+  const [galleryDeleteAllConfirmation, setGalleryDeleteAllConfirmation] = useState('');
+  const [galleryDeletingAll, setGalleryDeletingAll] = useState(false);
   const [pastoralImages, setPastoralImages] = useState<PastoralImages>({});
   const [pastoralTeam, setPastoralTeam] = useState<PastoralTeam>(pastoralTeamDefaults);
   const [pastoralTeamDirty, setPastoralTeamDirty] = useState(false);
@@ -2564,6 +2568,7 @@ const DominusDashboard = () => {
       });
       setGalleryAlbums((current) => [album, ...current]);
       setGallerySelectedAlbumId(album.id);
+      setGalleryOpenAlbumId(album.id);
       setGalleryNewAlbumTitle('');
       setGalleryNewAlbumDate('');
       setGalleryNewAlbumDescription('');
@@ -2617,11 +2622,37 @@ const DominusDashboard = () => {
       await adminApi.deleteGalleryAlbum(album.id);
       setGalleryAlbums((current) => current.filter((item) => item.id !== album.id));
       if (galleryAlbumEditId === album.id) setGalleryAlbumEditId(null);
+      if (galleryOpenAlbumId === album.id) setGalleryOpenAlbumId(null);
       await fetchGalleryImages();
       await fetchGalleryAlbums();
       setGalleryMessage(`Album deleted. Its photos were moved to Uncategorized.`);
     } catch (error) {
       setGalleryError(errorMessage(error, 'Unable to delete the gallery album.'));
+    }
+  };
+
+  const handleDeleteAllGalleryContent = async () => {
+    if (galleryDeleteAllConfirmation !== 'DELETE') return;
+    setGalleryDeletingAll(true);
+    setGalleryError('');
+    setGalleryMessage('');
+    try {
+      const result = await adminApi.deleteAllGalleryContent();
+      const albums = await adminApi.listGalleryAlbums();
+      setGalleryImages([]);
+      setGalleryAlbums(albums);
+      setGallerySelectedAlbumId(null);
+      setGalleryOpenAlbumId(null);
+      setGalleryAlbumEditId(null);
+      setGalleryAlbumSearch('');
+      setGalleryAlbumDateFilter('');
+      setGalleryDeleteAllConfirmation('');
+      setGalleryDeleteAllOpen(false);
+      setGalleryMessage(`Deleted ${result.photosDeleted} photo${result.photosDeleted === 1 ? '' : 's'} and ${result.albumsDeleted} album${result.albumsDeleted === 1 ? '' : 's'}. The Uncategorized folder is ready for a fresh start.`);
+    } catch (error) {
+      setGalleryError(errorMessage(error, 'Unable to clear the gallery.'));
+    } finally {
+      setGalleryDeletingAll(false);
     }
   };
 
@@ -2894,6 +2925,10 @@ const DominusDashboard = () => {
   const publishedArticles = articles.filter((article) => article.status === 'Published');
   const feastDrafts = feastDays.filter((item) => item.status === 'Draft');
   const publishedFeastDays = feastDays.filter((item) => item.status === 'Published');
+  const openGalleryAlbum = galleryAlbums.find((album) => album.id === galleryOpenAlbumId) || null;
+  const openGalleryPhotos = galleryOpenAlbumId === null
+    ? []
+    : galleryImages.filter((image) => image.albumId === galleryOpenAlbumId);
 
   const healthCards = [
     { label: 'Feast days', value: `${publishedFeastDays.length} published`, tone: '#16a34a' },
@@ -3265,9 +3300,34 @@ const DominusDashboard = () => {
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Memories</p>
             <h2 style={{ margin: '6px 0 0', fontSize: 24 }}>Photo Gallery</h2>
             <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>
-              Organize photos into event albums, publish photos visitors can see, and feature an album or individual photo.
+              Browse photos by album folders, publish photos visitors can see, and feature an album or individual photo.
             </p>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <button type="button" onClick={() => setGalleryDeleteAllOpen(true)} disabled={galleryDeletingAll} style={{ border: 0, borderRadius: 8, padding: '9px 13px', fontWeight: 700, cursor: galleryDeletingAll ? 'not-allowed' : 'pointer', background: '#fee2e2', color: '#b91c1c' }}>
+              Delete all photos &amp; albums
+            </button>
+          </div>
+          {galleryDeleteAllOpen && (
+            <div role="alertdialog" aria-modal="true" aria-labelledby="gallery-delete-all-title" aria-describedby="gallery-delete-all-description" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(15,23,42,0.65)' }}>
+              <div style={{ display: 'grid', gap: 14, width: '100%', maxWidth: 480, padding: 22, borderRadius: 16, background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+                <h3 id="gallery-delete-all-title" style={{ margin: 0, color: '#991b1b', fontSize: 20 }}>Delete all gallery content?</h3>
+                <p id="gallery-delete-all-description" style={{ margin: 0, color: '#475569', lineHeight: 1.6 }}>
+                  This permanently deletes every gallery photo and event album. The empty Uncategorized folder will remain. Articles, announcements, and other site content will not be affected.
+                </p>
+                <label style={{ display: 'grid', gap: 6, color: '#334155', fontSize: 13, fontWeight: 700 }}>
+                  Type DELETE to confirm
+                  <input autoComplete="off" value={galleryDeleteAllConfirmation} onChange={(event) => setGalleryDeleteAllConfirmation(event.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
+                  <button type="button" disabled={galleryDeletingAll} onClick={() => { setGalleryDeleteAllOpen(false); setGalleryDeleteAllConfirmation(''); }} style={{ border: 0, borderRadius: 8, padding: '9px 13px', fontWeight: 700, cursor: galleryDeletingAll ? 'not-allowed' : 'pointer', background: '#e2e8f0', color: '#334155' }}>Cancel</button>
+                  <button type="button" disabled={galleryDeletingAll || galleryDeleteAllConfirmation !== 'DELETE'} onClick={() => void handleDeleteAllGalleryContent()} style={{ border: 0, borderRadius: 8, padding: '9px 13px', fontWeight: 700, cursor: galleryDeletingAll || galleryDeleteAllConfirmation !== 'DELETE' ? 'not-allowed' : 'pointer', background: galleryDeleteAllConfirmation === 'DELETE' ? '#b91c1c' : '#fecaca', color: '#fff' }}>
+                    {galleryDeletingAll ? 'Deleting gallery...' : 'Permanently delete all'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleCreateGalleryAlbum} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, alignItems: 'end', padding: 16, border: '1px solid #e2e8f0', borderRadius: 14, background: '#fafbfd' }}>
             <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
               New album event name
@@ -3284,43 +3344,64 @@ const DominusDashboard = () => {
             <button type="submit" style={{ border: 0, borderRadius: 8, padding: '11px 14px', fontWeight: 700, cursor: 'pointer', color: '#fff', background: '#1a2744' }}>Create album</button>
           </form>
 
-          <div style={{ display: 'grid', gap: 12, marginTop: 18 }}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>Manage albums</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-              <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
-                Search by event name
-                <input type="search" value={galleryAlbumSearch} onChange={(event) => setGalleryAlbumSearch(event.target.value)} placeholder="Search albums..." style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
-              </label>
-              <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
-                Filter by event date
-                <input type="date" value={galleryAlbumDateFilter} onChange={(event) => setGalleryAlbumDateFilter(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
-              </label>
+          {galleryOpenAlbumId === null ? (
+            <div style={{ display: 'grid', gap: 12, marginTop: 18 }}>
+              <h3 style={{ margin: 0, fontSize: 18 }}>Album folders</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
+                  Search folders
+                  <input type="search" value={galleryAlbumSearch} onChange={(event) => setGalleryAlbumSearch(event.target.value)} placeholder="Search albums..." style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 700 }}>
+                  Filter by event date
+                  <input type="date" value={galleryAlbumDateFilter} onChange={(event) => setGalleryAlbumDateFilter(event.target.value)} style={{ width: '100%', minWidth: 0, padding: '9px 11px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
+                </label>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                {galleryAlbums
+                  .filter((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()))
+                  .filter((album) => !galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)
+                  .slice()
+                  .sort((a, b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt))
+                  .map((album) => (
+                    <article key={album.id} style={{ display: 'grid', alignContent: 'start', gap: 10, overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff' }}>
+                      {album.coverImage
+                        ? <img src={album.coverImage.thumbnailUrl} alt="" style={{ width: '100%', height: 140, objectFit: 'cover' }} />
+                        : <div aria-hidden="true" style={{ display: 'grid', placeItems: 'center', height: 140, background: '#f1f5f9', color: '#64748b', fontSize: 32 }}>▰</div>}
+                      <div style={{ display: 'grid', gap: 4, padding: '0 12px' }}>
+                        <strong style={{ overflowWrap: 'anywhere' }}>{album.title}</strong>
+                        <span style={{ color: '#64748b', fontSize: 12 }}>{album.date || 'No event date'} · {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}{album.isFeatured ? ' · Featured' : ''}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, padding: '0 12px 12px' }}>
+                        <button type="button" onClick={() => { setGalleryOpenAlbumId(album.id); setGallerySelectedAlbumId(album.id); }} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#dbeafe', color: '#1e3a8a' }}>Open folder</button>
+                        <button type="button" onClick={() => setGallerySelectedAlbumId(album.id)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: gallerySelectedAlbumId === album.id ? '#dcfce7' : '#f1f5f9', color: gallerySelectedAlbumId === album.id ? '#166534' : '#334155' }}>
+                          {gallerySelectedAlbumId === album.id ? 'Upload folder selected' : 'Use for uploads'}
+                        </button>
+                        <button type="button" onClick={() => handleStartGalleryAlbumEdit(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#f1f5f9', color: '#334155' }}>Rename / edit</button>
+                        <button type="button" onClick={() => void handleFeatureGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>{album.isFeatured ? 'Unfeature album' : 'Feature album'}</button>
+                        {album.slug !== 'uncategorized' && <button type="button" onClick={() => void handleDeleteGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Delete album</button>}
+                      </div>
+                    </article>
+                  ))}
+              </div>
+              {!galleryAlbums.length && <p style={{ margin: 0, color: '#64748b' }}>Loading folders...</p>}
+              {galleryAlbums.length > 0 && !galleryAlbums.some((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()) && (!galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)) && <p style={{ margin: 0, color: '#64748b' }}>No folders match these filters.</p>}
             </div>
-            {galleryAlbums
-              .filter((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()))
-              .filter((album) => !galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)
-              .slice()
-              .sort((a, b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt))
-              .map((album) => (
-                <div key={album.id} style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr)', gap: 12, alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
-                  {album.coverImage ? <img src={album.coverImage.thumbnailUrl} alt="" style={{ width: 64, height: 56, borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 64, height: 56, borderRadius: 8, background: '#f1f5f9' }} />}
-                  <div style={{ minWidth: 0 }}>
-                    <strong style={{ overflowWrap: 'anywhere' }}>{album.title}</strong>
-                    <div style={{ color: '#64748b', fontSize: 12 }}>{album.date || 'No event date'} · {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}{album.isFeatured ? ' · Featured' : ''}</div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <button type="button" onClick={() => setGallerySelectedAlbumId(album.id)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: gallerySelectedAlbumId === album.id ? '#dbeafe' : '#f1f5f9', color: '#1e3a8a' }}>
-                      {gallerySelectedAlbumId === album.id ? 'Selected for upload' : 'Select for upload'}
-                    </button>
-                    <button type="button" onClick={() => handleStartGalleryAlbumEdit(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#f1f5f9', color: '#334155' }}>Rename / edit</button>
-                    <button type="button" onClick={() => void handleFeatureGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fef3c7', color: '#92400e' }}>{album.isFeatured ? 'Unfeature album' : 'Feature album'}</button>
-                    {album.slug !== 'uncategorized' && <button type="button" onClick={() => void handleDeleteGalleryAlbum(album)} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Delete album</button>}
-                  </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 18, padding: 14, border: '1px solid #bfdbfe', borderRadius: 12, background: '#eff6ff' }}>
+              <div>
+                <button type="button" onClick={() => setGalleryOpenAlbumId(null)} style={{ border: 0, padding: 0, marginBottom: 8, background: 'transparent', color: '#1d4ed8', fontWeight: 700, cursor: 'pointer' }}>← All folders</button>
+                <h3 style={{ margin: 0, fontSize: 18 }}>{openGalleryAlbum?.title || 'Gallery folder'}</h3>
+                <p style={{ margin: '4px 0 0', color: '#475569', fontSize: 13 }}>{openGalleryAlbum?.photoCount ?? openGalleryPhotos.length} photos in this folder</p>
+              </div>
+              {openGalleryAlbum && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <button type="button" onClick={() => handleStartGalleryAlbumEdit(openGalleryAlbum)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fff', color: '#334155' }}>Rename / edit</button>
+                  {openGalleryAlbum.slug !== 'uncategorized' && <button type="button" onClick={() => void handleDeleteGalleryAlbum(openGalleryAlbum)} style={{ border: 0, borderRadius: 8, padding: '8px 11px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Delete folder</button>}
                 </div>
-              ))}
-            {!galleryAlbums.length && <p style={{ margin: 0, color: '#64748b' }}>Loading albums...</p>}
-            {galleryAlbums.length > 0 && !galleryAlbums.some((album) => album.title.toLowerCase().includes(galleryAlbumSearch.trim().toLowerCase()) && (!galleryAlbumDateFilter || album.date === galleryAlbumDateFilter)) && <p style={{ margin: 0, color: '#64748b' }}>No albums match these filters.</p>}
-          </div>
+              )}
+            </div>
+          )}
 
           {galleryAlbumEditId !== null && (
             <form onSubmit={handleSaveGalleryAlbum} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, alignItems: 'end', marginTop: 18, padding: 16, border: '1px solid #f2d574', borderRadius: 14, background: '#fffbeb' }}>
@@ -3347,6 +3428,7 @@ const DominusDashboard = () => {
             <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
               Album for these uploads
               <select required value={gallerySelectedAlbumId ?? ''} onChange={(event) => setGallerySelectedAlbumId(event.target.value ? Number(event.target.value) : null)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}>
+                <option value="" disabled>Choose an album folder</option>
                 {galleryAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}
               </select>
             </label>
@@ -3367,14 +3449,18 @@ const DominusDashboard = () => {
               />
             </label>
             <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
-              JPG, PNG, and WebP files up to 5 MB each are accepted. Images are optimized before saving to the site database. Uploaded images start as drafts.
+              Select several photos or a whole folder to keep them together in the chosen album. JPG, PNG, and WebP images up to 5 MB each are accepted; videos are not supported yet. Uploaded images start as drafts.
             </p>
             {galleryError && <p role="alert" style={{ margin: 0, color: '#b42318', fontSize: 13 }}>{galleryError}</p>}
             {galleryMessage && <p role="status" style={{ margin: 0, color: '#166534', fontSize: 13 }}>{galleryMessage}</p>}
           </div>
           <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>Gallery photos</h3>
-            {galleryImages.length === 0 ? <p style={{ margin: 0, color: '#64748b' }}>No gallery photos uploaded yet.</p> : galleryImages.map((image) => (
+            <h3 style={{ margin: 0, fontSize: 18 }}>{galleryOpenAlbumId === null ? 'Photos' : `Photos in ${openGalleryAlbum?.title || 'folder'}`}</h3>
+            {galleryOpenAlbumId === null
+              ? <p style={{ margin: 0, color: '#64748b' }}>Open an album folder above to view and manage its photos.</p>
+              : openGalleryPhotos.length === 0
+                ? <p style={{ margin: 0, color: '#64748b' }}>This folder is empty. Select it for uploads and add photos above.</p>
+                : openGalleryPhotos.map((image) => (
               <div key={image.id} style={{ display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', alignItems: 'center', gap: 12, border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
                 <img src={image.thumbnailUrl} alt="" style={{ width: 88, height: 66, borderRadius: 8, objectFit: 'cover' }} />
                 <div style={{ minWidth: 0 }}>
