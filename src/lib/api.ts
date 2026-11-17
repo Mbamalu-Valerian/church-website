@@ -9,6 +9,7 @@ export type ParishArticle = {
   authorName: string;
   excerpt: string;
   body: string;
+  imageData?: string;
   publishDate: string;
   status: Status;
 };
@@ -62,6 +63,7 @@ export type PastoralTeamMember = {
 export type PastoralTeam = {
   hierarchy: PastoralTeamMember[];
   parishClergy: PastoralTeamMember[];
+  catechists: PastoralTeamMember[];
 };
 export type ParishCommittee = {
   id: string;
@@ -196,6 +198,7 @@ export const adminApi = {
     return request('/pastoral-team', json('PUT', {
       hierarchy: metadata(team.hierarchy),
       parishClergy: metadata(team.parishClergy),
+      catechists: metadata(team.catechists),
     }));
   },
   async listCommittees(): Promise<ParishCommittee[] | null> {

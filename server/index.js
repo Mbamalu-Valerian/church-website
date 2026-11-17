@@ -59,6 +59,10 @@ const defaultPastoralTeam = {
     { id: 'associatePriest1', name: 'Rev. Fr. Pascal Okpanachi Yahaya', title: 'Associate Priest', contact: 'Contact via Parish Office' },
     { id: 'associatePriest2', name: 'Rev. Fr. Chijioke Majela', title: 'Associate Priest', contact: 'Contact via Parish Office' },
   ],
+  catechists: [
+    { id: 'catechist1', name: 'Catechist 1', title: 'Catechist' },
+    { id: 'catechist2', name: 'Catechist 2', title: 'Catechist' },
+  ],
 };
 const communityGroupKeys = ['organizations', 'societies', 'knighthood', 'states'];
 const committeeCategories = new Set(['liturgical', 'non-liturgical']);
@@ -210,6 +214,9 @@ const articleColumns = database.prepare('PRAGMA table_info(articles)').all();
 if (!articleColumns.some((column) => column.name === 'author_name')) {
   database.exec("ALTER TABLE articles ADD COLUMN author_name TEXT NOT NULL DEFAULT 'Holy Rosary Catholic Church'");
 }
+if (!articleColumns.some((column) => column.name === 'image_data')) {
+  database.exec("ALTER TABLE articles ADD COLUMN image_data TEXT NOT NULL DEFAULT ''");
+}
 
 const articleSeedMigration = 'initial-parish-articles-v1';
 const articleSeedApplied = database.prepare('SELECT name FROM content_migrations WHERE name = ?').get(articleSeedMigration);
@@ -321,6 +328,7 @@ const serializeArticle = (row) => ({
   authorName: row.author_name,
   excerpt: row.excerpt,
   body: row.body,
+  imageData: row.image_data || '',
   publishDate: row.publish_date,
   status: row.status,
 });
@@ -587,7 +595,7 @@ app.get('/api/public/announcements', (req, res) => {
 
 app.get('/api/public/articles', (req, res) => {
   const articles = database.prepare(`
-    SELECT id, slug, title, author_name, excerpt, body, publish_date, status FROM articles
+    SELECT id, slug, title, author_name, excerpt, body, image_data, publish_date, status FROM articles
     WHERE status = 'Published' AND publish_date <= ? ORDER BY publish_date DESC, id DESC
   `).all(getParishDate()).map(serializeArticle);
   res.json({ ok: true, data: articles });
@@ -600,7 +608,9 @@ const listPastoralImages = () => Object.fromEntries(
 );
 const readPastoralTeamConfig = () => {
   const saved = database.prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'pastoral-team'").get();
-  return saved ? JSON.parse(saved.setting_value) : defaultPastoralTeam;
+  if (!saved) return defaultPastoralTeam;
+  const parsed = JSON.parse(saved.setting_value);
+  return { ...defaultPastoralTeam, ...parsed, catechists: parsed.catechists || defaultPastoralTeam.catechists };
 };
 const serializePastoralTeam = () => {
   const team = readPastoralTeamConfig();
@@ -620,12 +630,16 @@ const serializePastoralTeam = () => {
   return {
     hierarchy: team.hierarchy.map(serializeMember),
     parishClergy: team.parishClergy.map(serializeMember),
+    catechists: team.catechists.map(serializeMember),
   };
 };
 const validatePastoralTeam = (value) => {
+  const catechistMembers = value?.catechists === undefined ? defaultPastoralTeam.catechists : value.catechists;
   if (!value || !Array.isArray(value.hierarchy) || !Array.isArray(value.parishClergy)
-    || value.hierarchy.length > 20 || value.parishClergy.length > 20
-    || value.hierarchy.length + value.parishClergy.length === 0) return null;
+    || !Array.isArray(catechistMembers) || value.hierarchy.length > 20
+    || value.parishClergy.length > 20 || catechistMembers.length > 20
+    || value.hierarchy.length + value.parishClergy.length + catechistMembers.length === 0
+    || (value.catechists === undefined && value.hierarchy.length + value.parishClergy.length === 0)) return null;
   const ids = new Set();
   const validateMembers = (members, group) => {
     const output = [];
@@ -652,7 +666,8 @@ const validatePastoralTeam = (value) => {
   };
   const hierarchy = validateMembers(value.hierarchy, 'hierarchy');
   const parishClergy = validateMembers(value.parishClergy, 'parishClergy');
-  return hierarchy && parishClergy ? { hierarchy, parishClergy } : null;
+  const catechists = validateMembers(catechistMembers, 'catechists');
+  return hierarchy && parishClergy && catechists ? { hierarchy, parishClergy, catechists } : null;
 };
 const readSettingJson = (key) => {
   const saved = database.prepare('SELECT setting_value FROM app_settings WHERE setting_key = ?').get(key);
@@ -750,8 +765,9 @@ app.put('/api/pastoral-team', requireSession, (req, res) => {
   const previousIds = new Set([
     ...readPastoralTeamConfig().hierarchy,
     ...readPastoralTeamConfig().parishClergy,
+    ...readPastoralTeamConfig().catechists,
   ].map((member) => member.id));
-  const nextIds = new Set([...team.hierarchy, ...team.parishClergy].map((member) => member.id));
+  const nextIds = new Set([...team.hierarchy, ...team.parishClergy, ...team.catechists].map((member) => member.id));
   database.exec('BEGIN IMMEDIATE');
   try {
     database.prepare(`
@@ -772,7 +788,7 @@ app.put('/api/pastoral-team', requireSession, (req, res) => {
 app.put('/api/pastoral-images/:key', requireSession, (req, res) => {
   const { key } = req.params;
   const team = readPastoralTeamConfig();
-  if (![...team.hierarchy, ...team.parishClergy].some((member) => member.id === key)) {
+  if (![...team.hierarchy, ...team.parishClergy, ...team.catechists].some((member) => member.id === key)) {
     return res.status(404).json({ ok: false, error: 'Pastoral team member not found.' });
   }
   if (req.body?.imageData === null) {
@@ -1108,25 +1124,29 @@ app.post('/api/articles', requireSession, (req, res) => {
   const authorName = typeof req.body?.authorName === 'string' ? req.body.authorName.trim() : '';
   const excerpt = typeof req.body?.excerpt === 'string' ? req.body.excerpt.trim() : '';
   const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+  const imageData = req.body?.imageData ?? '';
+  const image = imageData ? parseGalleryImageData(imageData) : null;
   const publishDate = typeof req.body?.publishDate === 'string' ? req.body.publishDate : getParishDate();
-  if (!title || title.length > 200 || !authorName || authorName.length > 100 || !excerpt || excerpt.length > 400 || !body || body.length > 30000 || !isValidDate(publishDate)) {
-    return res.status(400).json({ ok: false, error: 'Enter a title, writer name, excerpt, article text, and valid publication date.' });
+  if (!title || title.length > 200 || !authorName || authorName.length > 100 || !excerpt || excerpt.length > 400
+    || !body || body.length > 30000 || !isValidDate(publishDate)
+    || typeof imageData !== 'string' || (imageData && (!image || image.contentType !== 'image/jpeg' || image.data.length > 1024 * 1024))) {
+    return res.status(400).json({ ok: false, error: 'Enter a title, writer name, excerpt, article text, valid publication date, and an optional JPEG image no larger than 1 MB.' });
   }
 
   const baseSlug = title.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'article';
   const slug = `${baseSlug}-${randomUUID().slice(0, 8)}`;
   const result = database.prepare(`
-    INSERT INTO articles (slug, title, author_name, excerpt, body, publish_date, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'Draft')
-  `).run(slug, title, authorName, excerpt, body, publishDate);
+    INSERT INTO articles (slug, title, author_name, excerpt, body, image_data, publish_date, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'Draft')
+  `).run(slug, title, authorName, excerpt, body, imageData, publishDate);
   const article = database.prepare('SELECT * FROM articles WHERE id = ?').get(Number(result.lastInsertRowid));
   return res.status(201).json({ ok: true, data: serializeArticle(article) });
 });
 
 app.put('/api/articles/:id', requireSession, (req, res) => {
   const id = Number(req.params.id);
-  const existing = database.prepare('SELECT status FROM articles WHERE id = ?').get(id);
+  const existing = database.prepare('SELECT status, image_data FROM articles WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ ok: false, error: 'Article not found.' });
   if (existing.status !== 'Draft') return res.status(409).json({ ok: false, error: 'Only draft articles can be edited.' });
 
@@ -1134,14 +1154,18 @@ app.put('/api/articles/:id', requireSession, (req, res) => {
   const authorName = typeof req.body?.authorName === 'string' ? req.body.authorName.trim() : '';
   const excerpt = typeof req.body?.excerpt === 'string' ? req.body.excerpt.trim() : '';
   const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+  const imageData = req.body?.imageData === undefined ? existing.image_data : req.body.imageData;
+  const image = imageData ? parseGalleryImageData(imageData) : null;
   const publishDate = typeof req.body?.publishDate === 'string' ? req.body.publishDate : '';
-  if (!title || title.length > 200 || !authorName || authorName.length > 100 || !excerpt || excerpt.length > 400 || !body || body.length > 30000 || !isValidDate(publishDate)) {
-    return res.status(400).json({ ok: false, error: 'Enter a title, writer name, excerpt, article text, and valid publication date.' });
+  if (!title || title.length > 200 || !authorName || authorName.length > 100 || !excerpt || excerpt.length > 400
+    || !body || body.length > 30000 || !isValidDate(publishDate)
+    || typeof imageData !== 'string' || (imageData && (!image || image.contentType !== 'image/jpeg' || image.data.length > 1024 * 1024))) {
+    return res.status(400).json({ ok: false, error: 'Enter a title, writer name, excerpt, article text, valid publication date, and an optional JPEG image no larger than 1 MB.' });
   }
 
   database.prepare(`
-    UPDATE articles SET title = ?, author_name = ?, excerpt = ?, body = ?, publish_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-  `).run(title, authorName, excerpt, body, publishDate, id);
+    UPDATE articles SET title = ?, author_name = ?, excerpt = ?, body = ?, image_data = ?, publish_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(title, authorName, excerpt, body, imageData, publishDate, id);
   const article = database.prepare('SELECT * FROM articles WHERE id = ?').get(id);
   return res.json({ ok: true, data: serializeArticle(article) });
 });

@@ -149,6 +149,7 @@ const Navbar = () => {
 
   const moreLinks = [
     { label: 'Pastoral Team', href: '#priests' },
+    { label: 'Article Board', href: '#articles' },
     { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Office Hours', href: '#office-hours' },
     { label: 'Upcoming Events', href: '#events' },
@@ -158,6 +159,7 @@ const Navbar = () => {
   const allNavLinks = [
     ...primaryNavLinks,
     { label: 'Pastoral Team', href: '#priests' },
+    { label: 'Article Board', href: '#articles' },
     { label: 'Photo Gallery', href: '#gallery' },
     { label: 'Office Hours', href: '#office-hours' },
   ];
@@ -517,6 +519,7 @@ const defaultCommittees: ParishCommittee[] = [
         'Choral de Angelis | Rehearsals: Tuesday at 5:00 PM and Saturday at 5:00 PM',
         'All Saints Choir | Rehearsals: Sunday at 10:30 AM & Saturday at 5:00 PM',
         'St. Gregory | Rehearsals: Tuesday at 5:00 PM and Saturday at 6:00 PM',
+        "Children's Choir | Rehearsals: Friday and Saturday at 4:00 PM",
       ],
     },
     {
@@ -698,7 +701,7 @@ const defaultCommunities: ParishCommunities = {
   ],
   knighthood: [
     { id: 'knights-st-mulumba', name: 'Knights & Ladies of St. Mulumba', subtitle: 'Order of the Knights of Saint Mulumba Nigeria (KSM / LSM)', meeting: '3rd Saturday of the month' },
-    { id: 'knights-st-john', name: 'Knights & Ladies of St. John International Commandery #653', subtitle: 'Knights of St. John International & Ladies Auxiliary (KSJI / LAUX)', meeting: '3rd Saturday of the month' },
+    { id: 'knights-st-john', name: 'Knights of St. John International {Commandery #653} & Ladies Auxiliary {Commandery #577} (KSJI / LAUX)', subtitle: '', meeting: '3rd Saturday of the month' },
   ],
   states: [
     {
@@ -1433,6 +1436,7 @@ const ArticlesSection = () => {
                   <time className="text-xs font-semibold uppercase mb-4" style={{ color: '#a07830' }} dateTime={article.publishDate}>
                     {new Date(`${article.publishDate}T00:00:00`).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </time>
+                  {article.imageData && <img src={article.imageData} alt="" className="mb-5 max-h-72 w-full rounded-lg object-cover" />}
                   <h3 className="text-2xl font-bold mb-3" style={{ color: '#1a2744', fontFamily: 'Playfair Display, serif' }}>{article.title}</h3>
                   <p className="text-xs font-semibold mb-3" style={{ color: '#a07830' }}>By {article.authorName}</p>
                   <p className="text-gray-600 leading-relaxed mb-5">{article.excerpt}</p>
@@ -1475,6 +1479,10 @@ const pastoralTeamDefaults: PastoralTeam = {
     { id: 'associatePriest1', name: 'Rev. Fr. Pascal Okpanachi Yahaya', title: 'Associate Priest', image: '/images/priest2.jpg', contact: 'Contact via Parish Office' },
     { id: 'associatePriest2', name: 'Rev. Fr. Chijioke Majela', title: 'Associate Priest', image: '/images/priest3.jpg', contact: 'Contact via Parish Office' },
   ],
+  catechists: [
+    { id: 'catechist1', name: 'Catechist 1', title: 'Catechist', image: '' },
+    { id: 'catechist2', name: 'Catechist 2', title: 'Catechist', image: '' },
+  ],
 };
 
 const PastoralTeamSection = () => {
@@ -1484,7 +1492,7 @@ const PastoralTeamSection = () => {
       .then(setTeam)
       .catch((error: unknown) => console.error('Unable to load pastoral team updates.', error));
   }, []);
-  const { hierarchy, parishClergy } = team;
+  const { hierarchy, parishClergy, catechists } = team;
 
   return (
     <section id="priests" className="py-20 section-cream">
@@ -1545,6 +1553,28 @@ const PastoralTeamSection = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="w-full h-px my-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent)' }} />
+
+        <div>
+          <h3 className="mb-6 text-center text-2xl font-bold" style={{ color: '#1a2744', fontFamily: 'Playfair Display, serif' }}>Parish Catechists</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {catechists.map((catechist) => (
+              <div key={catechist.id} className="priest-card">
+                <div className="relative overflow-hidden" style={{ height: 320 }}>
+                  {catechist.image ? <img src={catechist.image} alt={catechist.name} className="w-full h-full object-cover object-top" /> : <div className="flex h-full items-center justify-center bg-[#e8e4d8] text-gray-500">Photo coming soon</div>}
+                  <div className="absolute bottom-0 left-0 right-0 h-24" style={{ background: 'linear-gradient(to top, rgba(26,39,68,0.9), transparent)' }} />
+                  <div className="absolute bottom-4 left-4">
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: 'rgba(201,168,76,0.9)', color: '#1a1a1a' }}>{catechist.title}</span>
+                  </div>
+                </div>
+                <div className="p-6 text-center">
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#1a2744', fontFamily: 'Playfair Display, serif' }}>{catechist.name}</h3>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
@@ -1800,6 +1830,7 @@ const Footer = () => {
     { label: 'Mass Schedule', href: '#home' },
     { label: 'About Us', href: '#about' },
     { label: 'Pastoral Team', href: '#priests' },
+    { label: 'Article Board', href: '#articles' },
     { label: 'Parish Activities', href: '#activities' },
     { label: 'Parish Committees', href: '#committees' },
     { label: 'Parish Communities', href: '#community' },
@@ -1809,9 +1840,9 @@ const Footer = () => {
 
   const massSchedule = [
     { day: 'Mon – Fri', time: '6:00 AM, 12:00 Noon, 6:00 PM' },
-    { day: 'Saturday', time: '6:00 AM' },
+    { day: 'Saturday', time: '7:00 AM' },
     { day: 'Sunday', time: '6:00 AM, 8:00 AM, 8:15 AM (Children), 10:00 AM, 6:00 PM' },
-    { day: 'Confession', time: 'Thur (6:30 AM/PM), Sat (6:30 AM)' },
+    { day: 'Confession', time: 'Thur (6:30 AM/PM), Sat (7:30 AM)' },
   ];
 
   return (
@@ -2000,6 +2031,7 @@ const DominusDashboard = () => {
   const [articleAuthorName, setArticleAuthorName] = useState('');
   const [articleExcerpt, setArticleExcerpt] = useState('');
   const [articleBody, setArticleBody] = useState('');
+  const [articleImageData, setArticleImageData] = useState('');
   const [articlePublishDate, setArticlePublishDate] = useState(getTodayInAbuja);
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
   const [articleError, setArticleError] = useState('');
@@ -2250,6 +2282,7 @@ const DominusDashboard = () => {
     setPastoralTeam((current) => ({
       hierarchy: current.hierarchy.map((member) => member.id === id ? { ...member, ...changes } : member),
       parishClergy: current.parishClergy.map((member) => member.id === id ? { ...member, ...changes } : member),
+      catechists: current.catechists.map((member) => member.id === id ? { ...member, ...changes } : member),
     }));
     setPastoralTeamDirty(true);
     setPastoralImageError('');
@@ -2262,7 +2295,7 @@ const DominusDashboard = () => {
       name: '',
       title: '',
       image: '',
-      ...(group === 'parishClergy' ? { contact: '' } : { specialization: '' }),
+      ...(group === 'parishClergy' ? { contact: '' } : group === 'hierarchy' ? { specialization: '' } : {}),
     };
     setPastoralTeam((current) => ({ ...current, [group]: [...current[group], member] }));
     setPastoralTeamDirty(true);
@@ -2661,7 +2694,18 @@ const DominusDashboard = () => {
     setArticleAuthorName('');
     setArticleExcerpt('');
     setArticleBody('');
+    setArticleImageData('');
     setArticlePublishDate(getTodayInAbuja());
+  };
+
+  const handleArticleImageUpload = async (file?: File) => {
+    if (!file) return;
+    setArticleError('');
+    try {
+      setArticleImageData(await compressGalleryImage(file));
+    } catch (error) {
+      setArticleError(errorMessage(error, 'Unable to prepare the article image.'));
+    }
   };
 
   const handleSaveArticle = async (event: React.FormEvent) => {
@@ -2673,6 +2717,7 @@ const DominusDashboard = () => {
       authorName: articleAuthorName,
       excerpt: articleExcerpt,
       body: articleBody,
+      imageData: articleImageData,
       publishDate: articlePublishDate,
     };
     try {
@@ -2696,6 +2741,7 @@ const DominusDashboard = () => {
     setArticleAuthorName(article.authorName);
     setArticleExcerpt(article.excerpt);
     setArticleBody(article.body);
+    setArticleImageData(article.imageData || '');
     setArticlePublishDate(article.publishDate);
     setArticleError('');
     setArticleMessage('');
@@ -2716,6 +2762,8 @@ const DominusDashboard = () => {
   };
 
   const handleDeleteArticle = async (id: number) => {
+    const article = articles.find((item) => item.id === id);
+    if (!window.confirm(`Permanently delete "${article?.title || 'this article'}"?`)) return;
     setArticleError('');
     setArticleMessage('');
     try {
@@ -2928,6 +2976,7 @@ const DominusDashboard = () => {
             {([
               { key: 'hierarchy' as const, label: 'Archdiocesan Leadership', members: pastoralTeam.hierarchy },
               { key: 'parishClergy' as const, label: 'Parish Clergy', members: pastoralTeam.parishClergy },
+              { key: 'catechists' as const, label: 'Catechists', members: pastoralTeam.catechists },
             ]).map(({ key: group, label, members }) => (
               <div key={group} style={{ display: 'grid', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -2965,12 +3014,12 @@ const DominusDashboard = () => {
                               Badge text
                               <input maxLength={120} value={member.specialization || ''} onChange={(event) => updatePastoralTeamMember(member.id, { specialization: event.target.value })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
                             </label>
-                          ) : (
+                          ) : group === 'parishClergy' ? (
                             <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
                               Contact details
                               <input maxLength={120} value={member.contact || ''} onChange={(event) => updatePastoralTeamMember(member.id, { contact: event.target.value, phoneHref: undefined })} style={{ width: '100%', minWidth: 0, padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 8 }} />
                             </label>
-                          )}
+                          ) : null}
                           <label style={{ display: 'grid', gap: 5, color: '#475569', fontSize: 12, fontWeight: 700 }}>
                             Change photo
                             <input
@@ -2989,9 +3038,10 @@ const DominusDashboard = () => {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                             <button type="button" disabled={index === 0 || pastoralTeamSaving} onClick={() => reorderPastoralTeamMember(group, index, -1)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Move up</button>
                             <button type="button" disabled={index === members.length - 1 || pastoralTeamSaving} onClick={() => reorderPastoralTeamMember(group, index, 1)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#e2e8f0', color: '#334155' }}>Move down</button>
-                            <select aria-label={`Group for ${member.name || 'new member'}`} value={group} disabled={pastoralTeamSaving} onChange={(event) => movePastoralTeamMember(group, member.id, event.target.value === 'hierarchy' ? 'hierarchy' : 'parishClergy')} style={{ flex: 1, minWidth: 140, padding: '7px 9px', border: '1px solid #cbd5e1', borderRadius: 7, background: '#fff' }}>
+                            <select aria-label={`Group for ${member.name || 'new member'}`} value={group} disabled={pastoralTeamSaving} onChange={(event) => movePastoralTeamMember(group, member.id, event.target.value === 'hierarchy' ? 'hierarchy' : event.target.value === 'catechists' ? 'catechists' : 'parishClergy')} style={{ flex: 1, minWidth: 140, padding: '7px 9px', border: '1px solid #cbd5e1', borderRadius: 7, background: '#fff' }}>
                               <option value="hierarchy">Leadership</option>
                               <option value="parishClergy">Parish clergy</option>
+                              <option value="catechists">Catechists</option>
                             </select>
                             <button type="button" disabled={pastoralTeamSaving} onClick={() => removePastoralTeamMember(group, member.id)} style={{ border: 0, borderRadius: 7, padding: '7px 9px', fontWeight: 700, cursor: 'pointer', background: '#fee2e2', color: '#b91c1c' }}>Remove</button>
                           </div>
@@ -3517,6 +3567,25 @@ const DominusDashboard = () => {
                 <textarea required maxLength={400} rows={3} value={articleExcerpt} onChange={(event) => setArticleExcerpt(event.target.value)} style={{ width: '100%', resize: 'vertical', padding: '11px 13px', borderRadius: 8, border: '1px solid #dfe4ee', fontWeight: 400 }} placeholder="A brief preview shown on the blog." />
               </label>
               <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
+                Article picture
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    void handleArticleImageUpload(file);
+                  }}
+                  style={{ width: '100%', fontSize: 13, fontWeight: 400 }}
+                />
+              </label>
+              {articleImageData && (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <img src={articleImageData} alt="Article image preview" style={{ maxHeight: 220, width: '100%', borderRadius: 8, objectFit: 'cover' }} />
+                  <button type="button" onClick={() => setArticleImageData('')} style={{ justifySelf: 'start', background: '#eef2f7', color: '#1a2744', border: 'none', borderRadius: 8, padding: '8px 12px', fontWeight: 700, cursor: 'pointer' }}>Remove picture</button>
+                </div>
+              )}
+              <label style={{ display: 'grid', gap: 6, fontWeight: 700 }}>
                 Article
                 <textarea required maxLength={30000} rows={10} value={articleBody} onChange={(event) => setArticleBody(event.target.value)} style={{ width: '100%', resize: 'vertical', padding: '11px 13px', borderRadius: 8, border: '1px solid #dfe4ee', fontWeight: 400, lineHeight: 1.6 }} placeholder="Write the full article here. Separate paragraphs with a blank line." />
               </label>
@@ -3540,6 +3609,7 @@ const DominusDashboard = () => {
                 <h3 style={{ margin: '0 0 8px', color: '#1a2744', fontSize: 22, fontFamily: 'Playfair Display, serif' }}>{articleTitle || 'Your article title'}</h3>
                 <p style={{ margin: '0 0 8px', color: '#a07830', fontSize: 13, fontWeight: 700 }}>By {articleAuthorName || 'Writer name'}</p>
                 <p style={{ margin: '0 0 12px', color: '#a07830', fontSize: 12 }}>{articlePublishDate}</p>
+                {articleImageData && <img src={articleImageData} alt="" style={{ maxHeight: 220, width: '100%', marginBottom: 12, borderRadius: 8, objectFit: 'cover' }} />}
                 <p style={{ margin: '0 0 14px', color: '#475569', lineHeight: 1.6 }}>{articleExcerpt || 'Your short introduction will appear here.'}</p>
                 <div style={{ borderTop: '1px solid #e5dcc4', paddingTop: 12, color: '#334155', lineHeight: 1.7 }}>
                   {articleBody
@@ -3574,9 +3644,12 @@ const DominusDashboard = () => {
                 {publishedArticles.length === 0 ? <p style={{ color: '#64748b' }}>Published articles will be archived here.</p> : (
                   <div style={{ display: 'grid', gap: 8 }}>
                     {publishedArticles.map((article) => (
-                      <div key={article.id} style={{ borderLeft: '3px solid #d4af37', padding: '6px 0 6px 10px' }}>
-                        <strong>{article.title}</strong>
-                        <div style={{ marginTop: 3, color: '#64748b', fontSize: 12 }}>{article.publishDate}{article.publishDate > getTodayInAbuja() ? ' · Scheduled' : ' · On blog'}</div>
+                      <div key={article.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderLeft: '3px solid #d4af37', padding: '6px 0 6px 10px' }}>
+                        <div>
+                          <strong>{article.title}</strong>
+                          <div style={{ marginTop: 3, color: '#64748b', fontSize: 12 }}>{article.publishDate}{article.publishDate > getTodayInAbuja() ? ' · Scheduled' : ' · On blog'}</div>
+                        </div>
+                        <button type="button" onClick={() => void handleDeleteArticle(article.id)} style={{ flexShrink: 0, border: 0, borderRadius: 6, padding: '6px 9px', background: '#fee2e2', color: '#b91c1c', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                       </div>
                     ))}
                   </div>

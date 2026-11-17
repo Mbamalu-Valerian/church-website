@@ -193,6 +193,7 @@ test('Dominus API protects administration and publishes notices and articles', a
     const initialPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
     assert.equal(initialPastoralTeam.hierarchy.length, 3, 'the public pastoral team should include the default leadership');
     assert.equal(initialPastoralTeam.parishClergy[0].name, 'Rev. Fr. Francis Kale', 'the public pastoral team should include the default clergy');
+    assert.equal(initialPastoralTeam.catechists.length, 2, 'the public pastoral team should include two catechist spots');
     assert.equal((await (await fetch(`${baseUrl}/api/public/committees`)).json()).data, null, 'the public committee API should allow the website defaults before edits');
     assert.equal((await (await fetch(`${baseUrl}/api/public/communities`)).json()).data, null, 'the public community API should allow the website defaults before edits');
     const invalidCommittees = await fetch(`${baseUrl}/api/committees`, {
@@ -277,6 +278,21 @@ test('Dominus API protects administration and publishes notices and articles', a
       body: JSON.stringify({ imageData: jpegData }),
     });
     assert.equal(savedNewMemberPhoto.status, 200, 'new pastoral team members should be able to receive photos');
+    const savedCatechistPhoto = await fetch(`${baseUrl}/api/pastoral-images/catechist1`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: jpegData }),
+    });
+    assert.equal(savedCatechistPhoto.status, 200, 'Dominus should accept photos for the catechist slots');
+    assert.equal((await savedCatechistPhoto.json()).data.catechist1, jpegData, 'catechist photo uploads should be returned to the dashboard');
+    const publicCatechistsWithPhoto = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data.catechists;
+    assert.equal(publicCatechistsWithPhoto[0].image, jpegData, 'uploaded catechist photos should be displayed publicly');
+    const resetCatechistPhoto = await fetch(`${baseUrl}/api/pastoral-images/catechist1`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: null }),
+    });
+    assert.equal(resetCatechistPhoto.status, 200);
     const removeNewPastoralMember = await fetch(`${baseUrl}/api/pastoral-team`, {
       method: 'PUT',
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
@@ -541,12 +557,14 @@ test('Dominus API protects administration and publishes notices and articles', a
         authorName: 'Valerian',
         excerpt: 'A short introduction to this week’s parish reflection.',
         body: 'Full article text,\nwith a new paragraph.',
+        imageData: jpegData,
         publishDate: '2999-12-31',
       }),
     });
     assert.equal(articleCreated.status, 201);
     const draftArticle = (await articleCreated.json()).data;
     assert.equal(draftArticle.authorName, 'Valerian', 'writer name should be saved on the article');
+    assert.equal(draftArticle.imageData, jpegData, 'article pictures should be saved with the draft');
     let publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;
     assert(!publicArticles.some((article) => article.id === draftArticle.id), 'draft articles should not be public');
 
@@ -562,7 +580,9 @@ test('Dominus API protects administration and publishes notices and articles', a
       }),
     });
     assert.equal(updatedArticleResponse.status, 200, 'draft articles should be editable');
-    assert.equal((await updatedArticleResponse.json()).data.authorName, 'Valerian Updated', 'writer name should be editable on drafts');
+    const updatedDraftArticle = (await updatedArticleResponse.json()).data;
+    assert.equal(updatedDraftArticle.authorName, 'Valerian Updated', 'writer name should be editable on drafts');
+    assert.equal(updatedDraftArticle.imageData, jpegData, 'editing other fields should preserve the article picture');
 
     const scheduledPublish = await fetch(`${baseUrl}/api/articles/${draftArticle.id}/publish`, {
       method: 'PUT',
@@ -581,6 +601,7 @@ test('Dominus API protects administration and publishes notices and articles', a
         authorName: 'Valerian',
         excerpt: 'A reflection for the parish this week.',
         body: 'The published article appears on the public blog.',
+        imageData: jpegData,
         publishDate: today,
       }),
     });
@@ -592,6 +613,30 @@ test('Dominus API protects administration and publishes notices and articles', a
     publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;
     assert(publicArticles.some((article) => article.id === weeklyArticle.id), 'published articles dated today should be public');
     assert.equal(publicArticles.find((article) => article.id === weeklyArticle.id).authorName, 'Valerian', 'public articles should show their writer name');
+    assert.equal(publicArticles.find((article) => article.id === weeklyArticle.id).imageData, jpegData, 'published article pictures should be public');
+    const removableArticleResponse = await fetch(`${baseUrl}/api/articles`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Published Article to Remove',
+        authorName: 'Valerian',
+        excerpt: 'A temporary published article.',
+        body: 'This published article will be deleted.',
+        publishDate: today,
+      }),
+    });
+    const removableArticle = (await removableArticleResponse.json()).data;
+    await fetch(`${baseUrl}/api/articles/${removableArticle.id}/publish`, {
+      method: 'PUT',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    const deletePublishedArticle = await fetch(`${baseUrl}/api/articles/${removableArticle.id}`, {
+      method: 'DELETE',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(deletePublishedArticle.status, 200, 'published articles should be deletable from Dominus');
+    publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;
+    assert(!publicArticles.some((article) => article.id === removableArticle.id), 'deleted published articles should no longer appear publicly');
 
     await stopServer();
     await startServer();
