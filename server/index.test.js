@@ -159,11 +159,18 @@ test('Dominus API protects administration and publishes notices and articles', a
 
     const privateGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`);
     assert.equal(privateGalleryBeforeLogin.status, 401, 'gallery administration should require authentication');
-    const deleteGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery`, {
-      method: 'DELETE',
+    assert.equal((await fetch(`${baseUrl}/api/vault`)).status, 401, 'the Vault should require authentication');
+    const unauthenticatedPublicationUpload = await fetch(`${baseUrl}/api/vault/upload-url`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: 'parish.pdf', contentType: 'application/pdf', fileSize: 100, folderPath: 'Publications' }),
+    });
+    assert.equal(unauthenticatedPublicationUpload.status, 401, 'publication uploads should require authentication');
+    const archiveGalleryBeforeLogin = await fetch(`${baseUrl}/api/gallery/archive-all`, {
+      method: 'POST',
       headers: { Origin: origin },
     });
-    assert.equal(deleteGalleryBeforeLogin.status, 401, 'clearing the gallery should require authentication');
+    assert.equal(archiveGalleryBeforeLogin.status, 401, 'archiving the gallery should require authentication');
     const privatePastoralImagesBeforeLogin = await fetch(`${baseUrl}/api/pastoral-images`);
     assert.equal(privatePastoralImagesBeforeLogin.status, 401, 'pastoral photo administration should require authentication');
     const privatePastoralTeamBeforeLogin = await fetch(`${baseUrl}/api/pastoral-team`);
@@ -178,6 +185,12 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert.equal(blockedPastoralImageUpdate.status, 401, 'pastoral photo updates should require authentication');
     const privateAlbumsBeforeLogin = await fetch(`${baseUrl}/api/gallery/albums`);
     assert.equal(privateAlbumsBeforeLogin.status, 401, 'album administration should require authentication');
+    const vaultWithoutR2 = await fetch(`${baseUrl}/api/vault/upload-url`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: 'parish.pdf', contentType: 'application/pdf', fileSize: 100, folderPath: 'Publications' }),
+    });
+    assert.equal(vaultWithoutR2.status, 503, 'publication uploads should report when R2 is not configured');
     let publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert.equal(publicGalleryResponse.status, 200);
     assert.deepEqual((await publicGalleryResponse.json()).data, [], 'gallery should start empty');
@@ -193,8 +206,10 @@ test('Dominus API protects administration and publishes notices and articles', a
     const generalAlbum = galleryAlbums.find((album) => album.slug === 'general-gallery');
     const uncategorizedAlbum = galleryAlbums.find((album) => album.slug === 'uncategorized');
     assert(generalAlbum, 'General Gallery should exist even when created by migration');
-    assert.equal(generalAlbum.photoCount, 1, 'migration should preserve the existing gallery photo');
+    assert.equal(generalAlbum.photoCount, 0, 'legacy gallery photos should be hidden from the active album after migration');
     assert(uncategorizedAlbum, 'reserved Uncategorized album should exist');
+    const vaultWithMigratedGallery = (await (await fetch(`${baseUrl}/api/vault`, { headers: { Cookie: cookie } })).json()).data.items;
+    assert(vaultWithMigratedGallery.some((item) => item.title === 'Legacy Parish Photo' && item.archivedAt), 'migration should preserve existing gallery photos in the Vault');
     const initialPastoralTeam = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data;
     assert.equal(initialPastoralTeam.hierarchy.length, 3, 'the public pastoral team should include the default leadership');
     assert.equal(initialPastoralTeam.parishClergy[0].name, 'Rev. Fr. Francis Kale', 'the public pastoral team should include the default clergy');
@@ -292,6 +307,18 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert.equal((await savedCatechistPhoto.json()).data.catechist1, jpegData, 'catechist photo uploads should be returned to the dashboard');
     const publicCatechistsWithPhoto = (await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data.catechists;
     assert.equal(publicCatechistsWithPhoto[0].image, jpegData, 'uploaded catechist photos should be displayed publicly');
+    const archiveCatechistPhoto = await fetch(`${baseUrl}/api/vault/pastoral/catechist1/archive`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(archiveCatechistPhoto.status, 200, 'pastoral photos should be archivable');
+    assert.equal((await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data.catechists[0].image, '', 'archived pastoral photos should leave the public team');
+    const restoreCatechistPhoto = await fetch(`${baseUrl}/api/vault/pastoral/catechist1/restore`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(restoreCatechistPhoto.status, 200, 'pastoral photos should be restorable');
+    assert.equal((await (await fetch(`${baseUrl}/api/public/pastoral-team`)).json()).data.catechists[0].image, jpegData, 'restored pastoral photos should return to the public team');
     const resetCatechistPhoto = await fetch(`${baseUrl}/api/pastoral-images/catechist1`, {
       method: 'PUT',
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
@@ -447,6 +474,23 @@ test('Dominus API protects administration and publishes notices and articles', a
     const remainingImages = (await (await fetch(`${baseUrl}/api/gallery`, { headers: { Cookie: cookie } })).json()).data;
     assert(!galleryAlbums.some((album) => album.id === harvestAlbum.id), 'deleted albums should no longer be listed');
     assert(remainingImages.filter((image) => image.albumId === refreshedUncategorized.id).length >= 2, 'deleting an album should move rather than delete its photos');
+    const archiveGalleryImage = await fetch(`${baseUrl}/api/vault/image/${galleryImage.id}/archive`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(archiveGalleryImage.status, 200, 'gallery photos should be archivable into the Vault');
+    publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
+    assert(!(await publicGalleryResponse.json()).data.some((image) => image.id === galleryImage.id), 'archived gallery photos should leave the public gallery');
+    const archivedAdminImage = await fetch(`${baseUrl}/api/gallery/${galleryImage.id}/image`, { headers: { Cookie: cookie } });
+    assert.equal(archivedAdminImage.status, 200, 'archived gallery photos should remain accessible to admins');
+    assert.deepEqual(Buffer.from(await archivedAdminImage.arrayBuffer()), Buffer.from(jpegData.split(',')[1], 'base64'));
+    const restoreGalleryImage = await fetch(`${baseUrl}/api/vault/image/${galleryImage.id}/restore`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(restoreGalleryImage.status, 200, 'gallery photos should be restorable from the Vault');
+    await fetch(`${baseUrl}/api/gallery/${galleryImage.id}/publish`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
+    await fetch(`${baseUrl}/api/gallery/${galleryImage.id}/feature`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
 
     const adminList = await fetch(`${baseUrl}/api/announcements`, { headers: { Cookie: cookie } });
     const existingAnnouncements = (await adminList.json()).data;
@@ -479,6 +523,56 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert.equal(publish.status, 200);
     publicAnnouncements = (await (await fetch(`${baseUrl}/api/public/announcements`)).json()).data;
     assert(publicAnnouncements.some((item) => item.id === created.id), 'published announcements should be public');
+
+    const popupStart = new Date(Date.now() - 60_000).toISOString();
+    const popupEnd = new Date(Date.now() + 60_000).toISOString();
+    const popupResponse = await fetch(`${baseUrl}/api/announcements`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parish Reflection Popup',
+        description: 'A scheduled reflection with a picture.',
+        date: parishWeek.today,
+        popupKind: 'reflection',
+        popupEnabled: true,
+        popupImageData: jpegData,
+        popupStartAt: popupStart,
+        popupEndAt: popupEnd,
+      }),
+    });
+    assert.equal(popupResponse.status, 201);
+    const popupCampaign = (await popupResponse.json()).data;
+    await fetch(`${baseUrl}/api/announcements/${popupCampaign.id}/publish`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
+    const publicPopup = (await (await fetch(`${baseUrl}/api/public/popup`)).json()).data;
+    assert.equal(publicPopup.id, popupCampaign.id, 'active published popup campaigns should be returned to the public site');
+    assert.equal(publicPopup.popupImageData, jpegData, 'popup images should be published with the campaign');
+    const futurePopupResponse = await fetch(`${baseUrl}/api/announcements`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Future Popup',
+        description: 'Not visible yet.',
+        date: parishWeek.today,
+        popupEnabled: true,
+        popupStartAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+      }),
+    });
+    const futurePopup = (await futurePopupResponse.json()).data;
+    await fetch(`${baseUrl}/api/announcements/${futurePopup.id}/publish`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
+    assert.equal((await (await fetch(`${baseUrl}/api/public/popup`)).json()).data.id, popupCampaign.id, 'future popup campaigns should stay hidden until their schedule begins');
+
+    const archiveAnnouncement = await fetch(`${baseUrl}/api/announcements/${created.id}`, {
+      method: 'DELETE',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(archiveAnnouncement.status, 200);
+    assert(!(await (await fetch(`${baseUrl}/api/public/announcements`)).json()).data.some((item) => item.id === created.id), 'archived announcements should leave the public calendar');
+    const restoreAnnouncement = await fetch(`${baseUrl}/api/vault/announcement/${created.id}/restore`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(restoreAnnouncement.status, 200, 'announcements should be restorable from the Vault');
+    await fetch(`${baseUrl}/api/announcements/${created.id}/publish`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
 
     const nextWeekNoticeResponse = await fetch(`${baseUrl}/api/announcements`, {
       method: 'POST',
@@ -642,6 +736,22 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert.equal(deletePublishedArticle.status, 200, 'published articles should be deletable from Dominus');
     publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;
     assert(!publicArticles.some((article) => article.id === removableArticle.id), 'deleted published articles should no longer appear publicly');
+    let vaultItems = (await (await fetch(`${baseUrl}/api/vault`, { headers: { Cookie: cookie } })).json()).data.items;
+    assert(vaultItems.some((item) => item.kind === 'article' && item.id === removableArticle.id && item.archivedAt), 'archived articles should appear in the Vault');
+    const restoreArticle = await fetch(`${baseUrl}/api/vault/article/${removableArticle.id}/restore`, {
+      method: 'POST',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(restoreArticle.status, 200, 'archived articles should be restorable');
+    await fetch(`${baseUrl}/api/articles/${removableArticle.id}/publish`, { method: 'PUT', headers: { Origin: origin, Cookie: cookie } });
+    await fetch(`${baseUrl}/api/articles/${removableArticle.id}`, { method: 'DELETE', headers: { Origin: origin, Cookie: cookie } });
+    const permanentlyDeleteArticle = await fetch(`${baseUrl}/api/vault/article/${removableArticle.id}`, {
+      method: 'DELETE',
+      headers: { Origin: origin, Cookie: cookie },
+    });
+    assert.equal(permanentlyDeleteArticle.status, 200, 'permanent deletion should be available from the Vault for archived content');
+    vaultItems = (await (await fetch(`${baseUrl}/api/vault`, { headers: { Cookie: cookie } })).json()).data.items;
+    assert(!vaultItems.some((item) => item.kind === 'article' && item.id === removableArticle.id), 'permanently deleted articles should leave the Vault');
 
     await stopServer();
     await startServer();
@@ -657,18 +767,23 @@ test('Dominus API protects administration and publishes notices and articles', a
     assert(restoredGalleryImages.some((image) => image.id === galleryImage.id && image.thumbnailUrl === `/api/public/gallery/${galleryImage.id}/image` && image.isFeatured), 'uploaded gallery images and featured selection should persist across restart');
     publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert((await publicGalleryResponse.json()).data.some((image) => image.id === galleryImage.id), 'published gallery items should persist across restart');
-    const clearGallery = await fetch(`${baseUrl}/api/gallery`, {
-      method: 'DELETE',
+    const clearGallery = await fetch(`${baseUrl}/api/gallery/archive-all`, {
+      method: 'POST',
       headers: { Origin: origin, Cookie: cookie },
     });
-    assert.equal(clearGallery.status, 200, 'Dominus should clear all gallery photos and user albums');
-    const clearedGallery = (await clearGallery.json()).data;
-    assert.equal(clearedGallery.photosDeleted, restoredGalleryImages.length, 'the clear action should report the number of removed photos');
-    assert(clearedGallery.albumsDeleted >= 1, 'the clear action should remove user albums');
+    assert.equal(clearGallery.status, 200, 'Dominus should archive all active gallery photos without deleting them');
+    const archivedGallery = (await clearGallery.json()).data;
+    assert.equal(archivedGallery.photosArchived, restoredGalleryImages.length, 'the archive action should report the number of archived photos');
     const clearedGalleryImages = (await (await fetch(`${baseUrl}/api/gallery`, { headers: { Cookie: cookie } })).json()).data;
-    assert.deepEqual(clearedGalleryImages, [], 'gallery photos should all be deleted');
+    assert.deepEqual(clearedGalleryImages, [], 'archived photos should leave the active gallery');
     const clearedGalleryAlbums = (await (await fetch(`${baseUrl}/api/gallery/albums`, { headers: { Cookie: cookie } })).json()).data;
-    assert.deepEqual(clearedGalleryAlbums.map((album) => album.slug), ['uncategorized'], 'the empty Uncategorized folder should remain for a fresh start');
+    assert(clearedGalleryAlbums.some((album) => album.slug === 'uncategorized'), 'the Uncategorized folder should remain');
+    assert(clearedGalleryAlbums.some((album) => album.slug === 'general-gallery'), 'archiving media should preserve existing albums');
+    const archivedVaultItems = (await (await fetch(`${baseUrl}/api/vault`, { headers: { Cookie: cookie } })).json()).data.items;
+    const archivedMedia = archivedVaultItems.filter((item) => (item.kind === 'image' || item.kind === 'video') && item.archivedAt);
+    assert(archivedMedia.length >= restoredGalleryImages.length, 'archived gallery files should remain in the Vault');
+    assert(restoredGalleryImages.every((image) => archivedMedia.some((item) => item.id === image.id)), 'every cleared gallery photo should be in the Vault');
+    assert(archivedMedia.some((item) => item.title === 'Legacy Parish Photo'), 'migrated legacy photos should remain in the Vault');
     publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert.deepEqual((await publicGalleryResponse.json()).data, [], 'deleted photos should disappear from the public gallery');
     publicArticles = (await (await fetch(`${baseUrl}/api/public/articles`)).json()).data;

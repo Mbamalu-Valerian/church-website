@@ -1,4 +1,4 @@
-# Holy Rosary Catholic Church Website
+﻿# Holy Rosary Catholic Church Website
 
 Public parish website and private Dominus content dashboard for Holy Rosary Catholic Church, Wuse Zone 2, Abuja.
 
@@ -10,7 +10,7 @@ The public website is a single scrolling page. The navigation jumps to these sec
 - **About:** parish introduction and parish activities.
 - **Community:** parish groups organized into interactive tabs.
 - **Calendar:** feast and saint days (each with its liturgical color of the day) plus published parish announcements.
-- **Gallery:** photos uploaded from a local folder, stored in SQLite, and browsed in an on-site media viewer.
+- **Gallery:** photos and videos organized by album and nested source folders, stored in Azure Blob Storage, and browsed in an on-site media viewer.
 - **Parish Articles:** published articles, expandable full text, and an archive of past posts.
 - **Pastoral Team:** bishops and parish clergy.
 - **Parish Office Days:** clergy availability and office services.
@@ -25,7 +25,8 @@ The private **Dominus** dashboard is at `/dominus` and is intentionally omitted 
 | Content | Source | Notes |
 | --- | --- | --- |
 | Site copy, Mass times, activities, clergy, office days, testimonials, and links | `src/App.tsx` | Update these source files and rebuild the frontend. |
-| Parish gallery photos | SQLite `gallery_images` table | Upload photos from Dominus, publish selected photos, and choose one published photo as the featured display image. |
+| Parish gallery photos and videos | SQLite `gallery_images` metadata and Azure Blob Storage objects | Preserve album/folder paths, upload directly to Blob Storage, publish selected media, and feature a published photo. |
+| Vault publications | SQLite `vault_files` metadata and Azure Blob Storage objects | Upload PDFs into named Vault folders; archived items can be restored or permanently deleted from Dominus. |
 | Liturgical feast and saint days | SQLite `feast_days` table | Create and publish in Dominus with a title, date, category, and a color of the day (Green, White, Red, or Purple). Only this Sunday-to-Saturday week's entries appear publicly. |
 | Parish announcements | SQLite `announcements` table | Create and publish in Dominus. Only published events dated Sunday through Saturday of the current Abuja-time week appear publicly; items stay in SQLite outside that display window. |
 | Parish articles | SQLite `articles` table | Write, preview, edit drafts, publish immediately, or schedule a future publication date in Dominus. Each post has its own writer byline. Past published articles remain in the public archive. |
@@ -41,11 +42,13 @@ On first API startup, announcement rows are imported from `server/data/announcem
 4. Publish a draft. If its publication date is today or earlier in the `Africa/Lagos` timezone, it appears in the public **Parish Articles** section. A future-dated article becomes visible automatically on its publication date.
 5. Public readers can expand the article in place. Published past articles remain available in the archive.
 
-The writer name is shown as the article byline. Existing database articles receive a default byline of “Holy Rosary Catholic Church” during the schema update; new articles require a writer name. Article bodies support Markdown headings, bold, and italics; image uploads are not currently implemented. The editor limits writer names to 100 characters, titles to 200 characters, introductions to 400 characters, and article bodies to 30,000 characters.
+The writer name is shown as the article byline. Existing database articles receive a default byline of â€œHoly Rosary Catholic Churchâ€ during the schema update; new articles require a writer name. Article bodies support Markdown headings, bold, and italics; an optional article picture can be uploaded. The editor limits writer names to 100 characters, titles to 200 characters, introductions to 400 characters, and article bodies to 30,000 characters.
 
 ## Manage Parish Announcements
 
 Create announcements in Dominus with a title, description, and date. New entries are drafts. Publish one at a time or use **Publish all drafts**. The public Calendar shows only published announcements dated from Sunday through Saturday of the current week in Abuja time. The list rolls over each Sunday; announcements outside the current week remain in the dashboard and are not deleted.
+
+The announcement editor can also create a dismissible website popup as an announcement, advert, or reflection. Add an optional picture and link, choose a local-time display window, and publish the campaign. Each visitorâ€™s browser remembers that campaign after dismissal.
 
 ## Manage Feast Days
 
@@ -53,12 +56,34 @@ Create feast and saint days in Dominus each week with a title, date, category, o
 
 ## Manage Gallery Photos
 
-1. In Dominus **Photo Gallery**, choose a folder from your device. JPG, PNG, and WebP files up to 5 MB each are optimized and saved to SQLite as drafts.
-2. Publish the photos you want displayed. Choose **Set as display photo** on a published photo to feature it prominently.
-3. Visitors can select any published photo to open the on-site viewer and browse the gallery with its previous/next controls or keyboard arrows.
+1. In Dominus **Photo Gallery**, create or select a named album, then choose a local folder. Supported photos and videos are uploaded directly to Azure Blob Storage; nested source-folder paths are retained.
+2. Publish the media you want displayed. Choose **Set as display photo** on a published photo to feature it prominently.
+3. Use **Archive all photos and videos** to remove existing media from public view without deleting it. Archived content can be restored from the Vault; permanent deletion is available there.
+4. Visitors can browse published albums and view or play their media on the site.
 
-The photo files and gallery metadata are stored in SQLite. No Drive API key or separate thumbnail upload is needed.
+Gallery metadata is stored in SQLite; media objects are stored in Blob Storage. Existing SQLite gallery images remain available in the Vault and can be restored. Article pictures and pastoral team pictures continue to be stored in SQLite.
 
+## Vault and Azure Blob Storage
+
+The Dominus **Vault** is the archive for articles, announcements, gallery media, pastoral team photos, and PDF publications. Archiving takes content off the public site but preserves it for restoration. Only archived Vault items can be permanently deleted. Gallery uploads and PDF publications require object storage; other content records and existing article/pastoral image data remain in SQLite.
+
+### Azure Blob Storage setup (recommended on Azure)
+
+1. In the Azure portal create a **Storage account** (Standard, LRS is fine; keep public blob access **disabled**).
+2. In the account, **Security + networking > Access keys** and copy a **Connection string**.
+3. In **App Service > Configuration > Application settings** add:
+
+| Setting | Value |
+| --- | --- |
+| `AZURE_STORAGE_CONNECTION_STRING` | The connection string (keep private; never commit it) |
+| `AZURE_STORAGE_CONTAINER` | Optional; defaults to `dominus-media` (created automatically) |
+
+4. In the storage account, **Settings > Resource sharing (CORS) > Blob service**, add a rule: allowed origin = your exact site URL (plus `http://localhost:5173` for development), methods `PUT, GET, HEAD, OPTIONS`, allowed headers `*`, exposed headers `*`, max age `3600`.
+5. Restart the App Service.
+
+Browsers upload directly to Blob Storage using short-lived (15 minute) signed URLs, and visitors view media through short-lived read-only signed URLs, so the container stays private. Without storage configured, uploads return an explicit setup error; other dashboard features keep working.
+
+Cloudflare R2 remains supported as an alternative: set `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` instead (Azure settings take priority when both are present).
 ## Technology and Layout
 
 - React 19 and TypeScript for the site and dashboard UI.

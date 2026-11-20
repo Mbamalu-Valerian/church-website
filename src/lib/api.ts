@@ -1,6 +1,19 @@
-export type Status = 'Draft' | 'Published';
+﻿export type Status = 'Draft' | 'Published';
 
-export type Announcement = { id: number; title: string; description: string; date: string; status: Status };
+export type Announcement = {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  status: Status;
+  archivedAt?: string | null;
+  popupKind?: 'announcement' | 'advert' | 'reflection';
+  popupEnabled?: boolean;
+  popupImageData?: string;
+  popupLink?: string;
+  popupStartAt?: string;
+  popupEndAt?: string;
+};
 
 export type ParishArticle = {
   id: number;
@@ -32,9 +45,26 @@ export type GalleryImage = {
   status: Status;
   thumbnailUrl: string;
   viewerUrl: string;
+  mediaType: 'image' | 'video';
+  folderPath: string;
+  originalFilename: string;
+  fileSize: number;
+  archivedAt?: string | null;
   isFeatured: boolean;
   uploadedAt: string;
 };
+export type VaultItem = {
+  id: number | string;
+  kind: 'article' | 'announcement' | 'image' | 'video' | 'pastoral' | 'publication';
+  title: string;
+  status: Status;
+  archivedAt: string | null;
+  date: string;
+  folder: string;
+  hasImage: boolean;
+  imageUrl: string;
+};
+export type VaultPage = { items: VaultItem[]; total: number; limit: number; offset: number };
 
 export type GalleryAlbum = {
   id: number;
@@ -99,7 +129,7 @@ export type ParishCommunities = Record<CommunityGroupKey, CommunityItem[]>;
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+export const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -108,7 +138,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
@@ -124,7 +154,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (response.status === 413) {
-    throw new ApiError('The request exceeds the server or hosting request-size limit. Check the hosting provider’s configured limit and try again.', 413);
+    throw new ApiError('The request exceeds the server or hosting request-size limit. Check the hosting providerâ€™s configured limit and try again.', 413);
   }
 
   const body = await response.text();
@@ -145,13 +175,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return result.data;
 }
 
-const json = (method: string, value?: unknown): RequestInit => ({
+export const json = (method: string, value?: unknown): RequestInit => ({
   method,
   ...(value === undefined ? {} : { body: JSON.stringify(value) }),
 });
 
 export const publicApi = {
   announcements: () => request<Announcement[]>('/public/announcements'),
+  popup: () => request<Announcement | null>('/public/popup'),
   articles: () => request<ParishArticle[]>('/public/articles'),
   feastDays: () => request<FeastDay[]>('/public/feast-days'),
   gallery: () => request<GalleryImage[]>('/public/gallery'),
@@ -219,7 +250,7 @@ export const adminApi = {
   async listAnnouncements(): Promise<Announcement[]> {
     return request('/announcements');
   },
-  async createAnnouncement(input: { title: string; description: string; date: string }): Promise<Announcement> {
+  async createAnnouncement(input: Pick<Announcement, 'title' | 'description' | 'date'> & Partial<Pick<Announcement, 'popupKind' | 'popupEnabled' | 'popupImageData' | 'popupLink' | 'popupStartAt' | 'popupEndAt'>>): Promise<Announcement> {
     return request('/announcements', json('POST', input));
   },
   async publishAnnouncement(id: number): Promise<void> {
@@ -270,8 +301,14 @@ export const adminApi = {
   async listGalleryAlbums(): Promise<GalleryAlbum[]> {
     return request('/gallery/albums');
   },
-  async deleteAllGalleryContent(): Promise<{ photosDeleted: number; albumsDeleted: number }> {
-    return request('/gallery', json('DELETE'));
+  async archiveAllGalleryContent(): Promise<{ photosArchived: number }> {
+    return request('/gallery/archive-all', json('POST'));
+  },
+  async createGalleryUpload(input: { filename: string; contentType: string; fileSize: number; albumTitle: string; folderPath: string }): Promise<{ id: number; uploadUrl: string; uploadHeaders?: Record<string, string>; albumId: number }> {
+    return request('/gallery/upload-url', json('POST', input));
+  },
+  async completeGalleryUpload(id: number): Promise<GalleryImage> {
+    return request(`/gallery/${id}/complete-upload`, json('PUT'));
   },
   async createGalleryAlbum(input: { title: string; date: string; description: string }): Promise<GalleryAlbum> {
     return request('/gallery/albums', json('POST', input));
@@ -305,5 +342,23 @@ export const adminApi = {
   },
   async deleteGalleryImage(id: number): Promise<void> {
     await request(`/gallery/${id}`, json('DELETE'));
+  },
+  async listVault(limit = 50, offset = 0): Promise<VaultPage> {
+    return request(`/vault?limit=${limit}&offset=${offset}`);
+  },
+  async archiveVaultItem(kind: VaultItem['kind'], id: VaultItem['id']): Promise<void> {
+    await request(`/vault/${kind}/${encodeURIComponent(id)}/archive`, json('POST'));
+  },
+  async restoreVaultItem(kind: VaultItem['kind'], id: VaultItem['id']): Promise<void> {
+    await request(`/vault/${kind}/${encodeURIComponent(id)}/restore`, json('POST'));
+  },
+  async permanentlyDeleteVaultItem(kind: VaultItem['kind'], id: VaultItem['id']): Promise<void> {
+    await request(`/vault/${kind}/${encodeURIComponent(id)}`, json('DELETE'));
+  },
+  async createVaultPublicationUpload(input: { filename: string; contentType: string; fileSize: number; folderPath: string }): Promise<{ id: number; uploadUrl: string; uploadHeaders?: Record<string, string> }> {
+    return request('/vault/upload-url', json('POST', input));
+  },
+  async completeVaultPublicationUpload(id: number): Promise<void> {
+    await request(`/vault/files/${id}/complete-upload`, json('PUT'));
   },
 };

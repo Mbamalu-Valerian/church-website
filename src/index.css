@@ -421,6 +421,71 @@ footer {
   background: linear-gradient(180deg, #111827 0%, #0d1421 100%);
 }
 
+/* Phone fit */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+img, video, iframe {
+  max-width: 100%;
+}
+.hero-section {
+  min-height: 100svh;
+}
+.card, .priest-card, .event-card {
+  min-width: 0;
+}
+.event-card h4, .card h3, .priest-card h3, p, h1, h2, h3 {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .priest-card > div.relative {
+    height: 280px !important;
+  }
+  .contact-map {
+    height: 280px !important;
+  }
+  .btn-gold {
+    min-height: 44px;
+  }
+  nav button, nav a, section button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 400px) {
+  section.py-20 {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+  .hero-content {
+    padding-top: 6rem;
+    padding-bottom: 4rem;
+  }
+  .hero-section h1 {
+    font-size: 1.875rem;
+    line-height: 1.2;
+  }
+  section h2 {
+    font-size: 1.625rem;
+    line-height: 1.25;
+  }
+  .hero-content .btn-gold {
+    width: 100%;
+    justify-content: center;
+  }
+  .priest-card > div.relative {
+    height: 240px !important;
+  }
+  .contact-map {
+    height: 240px !important;
+  }
+  .nav-title {
+    font-size: 0.8125rem;
+  }
+}
+
 /* Responsive tweaks */
 @media (max-width: 768px) {
   .hero-bg {
@@ -430,3 +495,15 @@ footer {
     height: 260px;
   }
 }
+
+/* Dominus dashboard dark mode */
+[data-dominus-theme='dark'] {
+  filter: invert(0.92) hue-rotate(180deg);
+  background: #0b1020 !important;
+}
+[data-dominus-theme='dark'] img,
+[data-dominus-theme='dark'] video,
+[data-dominus-theme='dark'] canvas {
+  filter: invert(1) hue-rotate(180deg);
+}
+
