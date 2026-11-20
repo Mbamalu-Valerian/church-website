@@ -63,27 +63,46 @@ Create feast and saint days in Dominus each week with a title, date, category, o
 
 Gallery metadata is stored in SQLite; media objects are stored in Blob Storage. Existing SQLite gallery images remain available in the Vault and can be restored. Article pictures and pastoral team pictures continue to be stored in SQLite.
 
-## Vault and Azure Blob Storage
+## Vault and Media Storage (Supabase / Azure / R2)
 
 The Dominus **Vault** is the archive for articles, announcements, gallery media, pastoral team photos, and PDF publications. Archiving takes content off the public site but preserves it for restoration. Only archived Vault items can be permanently deleted. Gallery uploads and PDF publications require object storage; other content records and existing article/pastoral image data remain in SQLite.
 
-### Azure Blob Storage setup (recommended on Azure)
+### Option 1: Supabase Storage (Recommended: Free tier, 1 GB storage, no card required)
 
-1. In the Azure portal create a **Storage account** (Standard, LRS is fine; keep public blob access **disabled**).
-2. In the account, **Security + networking > Access keys** and copy a **Connection string**.
+1. Create a free account and project at [supabase.com](https://supabase.com).
+2. In the Supabase dashboard, go to **Storage** and click **New bucket**:
+   * Name: `dominus-media`
+   * Keep public bucket **OFF** (the site uses secure signed URLs).
+3. In **Project Settings > API**, copy your:
+   * **Project URL** (`https://<project-ref>.supabase.co`)
+   * **service_role secret key** (revealed under *Project API keys*)
+4. In your hosting environment (e.g. Azure **App Service > Configuration / Environment variables**), add:
+
+| Setting | Value |
+| --- | --- |
+| `SUPABASE_URL` | Your Project URL (e.g. `https://xyz.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your secret `service_role` key (keep private) |
+| `SUPABASE_BUCKET` | Optional; defaults to `dominus-media` |
+
+Alternatively, if using the Supabase S3 API (Project Settings > Storage > S3 Access Keys):
+set `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`, and `SUPABASE_URL`.
+
+### Option 2: Azure Blob Storage
+
+1. In the Azure portal create a **Storage account** (Standard, LRS; keep public blob access **disabled**).
+2. In the account, go to **Security + networking > Access keys** and copy a **Connection string**.
 3. In **App Service > Configuration > Application settings** add:
 
 | Setting | Value |
 | --- | --- |
-| `AZURE_STORAGE_CONNECTION_STRING` | The connection string (keep private; never commit it) |
-| `AZURE_STORAGE_CONTAINER` | Optional; defaults to `dominus-media` (created automatically) |
+| `AZURE_STORAGE_CONNECTION_STRING` | The connection string (keep private) |
+| `AZURE_STORAGE_CONTAINER` | Optional; defaults to `dominus-media` |
 
-4. In the storage account, **Settings > Resource sharing (CORS) > Blob service**, add a rule: allowed origin = your exact site URL (plus `http://localhost:5173` for development), methods `PUT, GET, HEAD, OPTIONS`, allowed headers `*`, exposed headers `*`, max age `3600`.
-5. Restart the App Service.
+4. In the storage account, go to **Settings > Resource sharing (CORS) > Blob service**, add a rule: allowed origin = your site URL, methods `PUT, GET, HEAD, OPTIONS`, allowed headers `*`, exposed headers `*`.
 
-Browsers upload directly to Blob Storage using short-lived (15 minute) signed URLs, and visitors view media through short-lived read-only signed URLs, so the container stays private. Without storage configured, uploads return an explicit setup error; other dashboard features keep working.
+### Option 3: Cloudflare R2
 
-Cloudflare R2 remains supported as an alternative: set `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` instead (Azure settings take priority when both are present).
+Set `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`.
 ## Technology and Layout
 
 - React 19 and TypeScript for the site and dashboard UI.

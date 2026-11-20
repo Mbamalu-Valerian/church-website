@@ -6,10 +6,11 @@ import {
 } from '@azure/storage-blob';
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { createClient } from '@supabase/supabase-js';
 
 // Object storage for photos, videos and PDFs. Files go straight from the browser
 // to storage using short-lived signed URLs; SQLite only keeps the metadata.
-// Provider is picked from the environment: Azure Blob Storage first, then Cloudflare R2.
+// Provider priority: Supabase Storage > Azure Blob Storage > Cloudflare R2.
 
 function parseConnectionString(value) {
   const parts = Object.fromEntries(
@@ -19,6 +20,69 @@ function parseConnectionString(value) {
     }),
   );
   return { accountName: parts.AccountName, accountKey: parts.AccountKey };
+}
+
+export function createSupabaseStorage({ url, serviceKey, bucket = 'dominus-media' }) {
+  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const cleanUrl = url.replace(/\/+$/, '');
+  return {
+    provider: 'supabase',
+    label: 'Supabase Storage',
+    async uploadUrl(key, contentType, seconds = 900) {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(key);
+      if (error) throw error;
+      const fullUrl = data.signedUrl.startsWith('http')
+        ? data.signedUrl
+        : `${cleanUrl}/storage/v1${data.signedUrl.startsWith('/') ? '' : '/'}${data.signedUrl}`;
+      return {
+        uploadUrl: fullUrl,
+        uploadHeaders: { 'Content-Type': contentType },
+      };
+    },
+    async downloadUrl(key, seconds = 3600) {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(key, seconds);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+    async size(key) {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(key, 60);
+      if (error) throw error;
+      const head = await fetch(data.signedUrl, { method: 'HEAD' });
+      const length = head.headers.get('content-length');
+      return Number(length || 0);
+    },
+    async remove(key) {
+      const { error } = await supabase.storage.from(bucket).remove([key]);
+      if (error) throw error;
+    },
+  };
+}
+
+export function createSupabaseS3Storage({ endpoint, accessKeyId, secretAccessKey, bucket = 'dominus-media', region = 'us-east-1' }) {
+  const client = new S3Client({
+    region,
+    endpoint,
+    forcePathStyle: true,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+  return {
+    provider: 'supabase-s3',
+    label: 'Supabase Storage (S3 API)',
+    async uploadUrl(key, contentType, seconds = 900) {
+      const uploadUrl = await getSignedUrl(client, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }), { expiresIn: seconds });
+      return { uploadUrl, uploadHeaders: { 'Content-Type': contentType } };
+    },
+    async downloadUrl(key, seconds = 3600) {
+      return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: seconds });
+    },
+    async size(key) {
+      const stored = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      return Number(stored.ContentLength);
+    },
+    async remove(key) {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    },
+  };
 }
 
 export function createAzureStorage({ accountName, accountKey, container, endpoint }) {
@@ -96,14 +160,39 @@ export function createR2Storage({ accountId, bucket, accessKeyId, secretAccessKe
 }
 
 export function createStorageFromEnv(env = process.env) {
-  const container = env.AZURE_STORAGE_CONTAINER || 'dominus-media';
+  // 1. Supabase Storage (URL + Service Role Key, or S3 API)
+  const supabaseBucket = env.SUPABASE_STORAGE_BUCKET || env.SUPABASE_BUCKET || 'dominus-media';
+  if (env.SUPABASE_S3_ACCESS_KEY_ID && env.SUPABASE_S3_SECRET_ACCESS_KEY) {
+    const endpoint = env.SUPABASE_S3_ENDPOINT || (env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/+$/, '')}/storage/v1/s3` : '');
+    if (endpoint) {
+      return createSupabaseS3Storage({
+        endpoint,
+        accessKeyId: env.SUPABASE_S3_ACCESS_KEY_ID,
+        secretAccessKey: env.SUPABASE_S3_SECRET_ACCESS_KEY,
+        bucket: supabaseBucket,
+        region: env.SUPABASE_S3_REGION || 'us-east-1',
+      });
+    }
+  }
+  if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+    return createSupabaseStorage({
+      url: env.SUPABASE_URL,
+      serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
+      bucket: supabaseBucket,
+    });
+  }
+
+  // 2. Azure Blob Storage
+  const azureContainer = env.AZURE_STORAGE_CONTAINER || 'dominus-media';
   if (env.AZURE_STORAGE_CONNECTION_STRING) {
     const { accountName, accountKey } = parseConnectionString(env.AZURE_STORAGE_CONNECTION_STRING);
-    if (accountName && accountKey) return createAzureStorage({ accountName, accountKey, container, endpoint: env.AZURE_STORAGE_ENDPOINT });
+    if (accountName && accountKey) return createAzureStorage({ accountName, accountKey, container: azureContainer, endpoint: env.AZURE_STORAGE_ENDPOINT });
   }
   if (env.AZURE_STORAGE_ACCOUNT_NAME && env.AZURE_STORAGE_ACCOUNT_KEY) {
-    return createAzureStorage({ accountName: env.AZURE_STORAGE_ACCOUNT_NAME, accountKey: env.AZURE_STORAGE_ACCOUNT_KEY, container, endpoint: env.AZURE_STORAGE_ENDPOINT });
+    return createAzureStorage({ accountName: env.AZURE_STORAGE_ACCOUNT_NAME, accountKey: env.AZURE_STORAGE_ACCOUNT_KEY, container: azureContainer, endpoint: env.AZURE_STORAGE_ENDPOINT });
   }
+
+  // 3. Cloudflare R2
   if (['R2_ACCOUNT_ID', 'R2_BUCKET_NAME', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'].every((key) => Boolean(env[key]))) {
     return createR2Storage({
       accountId: env.R2_ACCOUNT_ID,
@@ -112,7 +201,8 @@ export function createStorageFromEnv(env = process.env) {
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
     });
   }
+
   return null;
 }
 
-export const storageNotConfiguredMessage = 'Media storage is not configured. Set the Azure Blob Storage settings (AZURE_STORAGE_CONNECTION_STRING) in the hosting environment.';
+export const storageNotConfiguredMessage = 'Media storage is not configured. Set Supabase Storage (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) or Azure Blob Storage in the hosting environment.';
