@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authApi, adminApi } from './lib/api';
 import NewsletterAdmin from './Newsletter';
 import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryImage, PastoralImageKey, PastoralImages, PastoralTeam, PastoralTeamMember, ParishCommittee, CommunityGroupKey, CommunityItem, ParishCommunities, VaultItem, VaultPage } from './lib/api';
