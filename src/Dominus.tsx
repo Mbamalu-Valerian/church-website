@@ -207,6 +207,38 @@ const DominusDashboard = () => {
     }
   }, [dashboardTheme]);
 
+  const [activeSection, setActiveSection] = useState('dominus-overview');
+
+  useEffect(() => {
+    const sectionIds = [
+      'dominus-overview',
+      'dominus-newsletter',
+      'dominus-vault',
+      'dominus-pastoral-team',
+      'dominus-committees',
+      'dominus-communities',
+      'dominus-announcements',
+      'dominus-gallery',
+      'dominus-feast-days',
+      'dominus-articles',
+    ];
+
+    const handleScroll = () => {
+      const scrollPos = window.scrollY + 160;
+      for (let i = sectionIds.length - 1; i >= 0; i -= 1) {
+        const el = document.getElementById(sectionIds[i]);
+        if (el && el.offsetTop <= scrollPos) {
+          setActiveSection(sectionIds[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const updateCommittee = (id: string, changes: Partial<ParishCommittee>) => {
     setCommittees((current) => current.map((item) => item.id === id ? { ...item, ...changes } : item));
     setCommitteeContentDirty(true);
@@ -1128,8 +1160,42 @@ const DominusDashboard = () => {
           color: #e2e8f0 !important;
           border-color: #475569 !important;
         }
+        @media (max-width: 1023px) {
+          .dominus-layout { flex-direction: column !important; }
+          .dominus-sidebar { width: 100% !important; position: static !important; max-height: none !important; margin-bottom: 24px !important; }
+        }
+        @media (min-width: 1024px) {
+          .dominus-sidebar {
+            position: sticky !important;
+            top: 20px !important;
+            max-height: calc(100vh - 40px) !important;
+            overflow-y: auto !important;
+          }
+        }
+        .dominus-nav-link:hover {
+          background-color: #f1f5f9 !important;
+        }
+        .dominus-nav-link:focus-visible {
+          outline: 2px solid #b9952a !important;
+          outline-offset: 2px !important;
+        }
+        [data-dominus-theme="dark"] .dominus-sidebar {
+          background-color: #111827 !important;
+          box-shadow: 0 12px 28px rgba(0,0,0,0.4) !important;
+        }
+        [data-dominus-theme="dark"] .dominus-nav-link {
+          color: #cbd5e1 !important;
+        }
+        [data-dominus-theme="dark"] .dominus-nav-link:hover {
+          background-color: #1e293b !important;
+        }
+        [data-dominus-theme="dark"] .dominus-nav-link[aria-current="true"] {
+          background-color: #1e293b !important;
+          color: #f6e7b8 !important;
+          border-left-color: #c9a84c !important;
+        }
       `}</style>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
           <div>
             <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.18em', color: '#b9952a', fontWeight: 700, textTransform: 'uppercase' }}>
@@ -1147,33 +1213,118 @@ const DominusDashboard = () => {
           </div>
         </header>
 
-        <nav aria-label="Dashboard sections" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-          {[
-            ['dominus-pastoral-team', 'Pastoral Team'],
-            ['dominus-committees', 'Parish Committees'],
-            ['dominus-communities', 'Communities & Societies'],
-            ['dominus-newsletter', 'The Rosarian'],
-            ['dominus-vault', 'Vault'],
-          ].map(([href, label]) => (
-            <a key={href} href={`#${href}`} style={{ border: '1px solid #d8dee9', borderRadius: 999, padding: '9px 14px', color: '#1a2744', background: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-              {label}
-            </a>
-          ))}
-        </nav>
-
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 28 }}>
-          {healthCards.map((item) => (
-            <div key={item.label} style={{ background: '#fff', borderRadius: 18, padding: 20, boxShadow: '0 10px 28px rgba(26,39,68,0.06)' }}>
-              <div style={{ color: item.tone, fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{item.label}</div>
-              <div style={{ marginTop: 12, fontSize: 28, fontWeight: 800 }}>{item.value}</div>
+        <div className="dominus-layout" style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+          <aside aria-label="Dominus sections navigation" className="dominus-sidebar" style={{ width: 270, flexShrink: 0, background: '#fff', borderRadius: 20, padding: '20px 16px', boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 14, marginBottom: 14, borderBottom: '1px solid #e2e8f0' }}>
+              <img src="/images/holy_rosary_seal_cutout.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+              <div>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#b9952a' }}>Quick Navigate</span>
+                <span style={{ fontSize: 14, fontWeight: 800 }}>Page Sections</span>
+              </div>
             </div>
-          ))}
-        </section>
 
-        <NewsletterAdmin />
+            <nav aria-label="Page sections">
+              {[
+                {
+                  title: 'Core & Archive',
+                  items: [
+                    { id: 'dominus-overview', label: 'Statistics & Health', icon: '📊' },
+                    { id: 'dominus-newsletter', label: 'The Rosarian', icon: '📰', badge: 'Monthly' },
+                    { id: 'dominus-vault', label: 'Vault Archive', icon: '🏛️' },
+                    { id: 'dominus-gallery', label: 'Photo & Video Gallery', icon: '🖼️' },
+                  ],
+                },
+                {
+                  title: 'News & Notices',
+                  items: [
+                    { id: 'dominus-announcements', label: 'Announcements & Popups', icon: '📢' },
+                    { id: 'dominus-articles', label: 'Parish Articles', icon: '✍️' },
+                    { id: 'dominus-feast-days', label: 'Feast & Saint Days', icon: '📅' },
+                  ],
+                },
+                {
+                  title: 'Parish Leadership',
+                  items: [
+                    { id: 'dominus-pastoral-team', label: 'Pastoral Team', icon: '⛪' },
+                    { id: 'dominus-committees', label: 'Parish Committees', icon: '👥' },
+                    { id: 'dominus-communities', label: 'Communities & Societies', icon: '🤝' },
+                  ],
+                },
+              ].map((group) => (
+                <div key={group.title} style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8', padding: '0 8px 6px' }}>
+                    {group.title}
+                  </div>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+                    {group.items.map((item) => {
+                      const isActive = activeSection === item.id;
+                      return (
+                        <li key={item.id}>
+                          <a
+                            href={`#${item.id}`}
+                            className="dominus-nav-link"
+                            aria-current={isActive ? 'true' : undefined}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' });
+                              setActiveSection(item.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              textDecoration: 'none',
+                              fontSize: 13,
+                              fontWeight: isActive ? 700 : 500,
+                              color: isActive ? '#1a2744' : '#475569',
+                              background: isActive ? '#fef3c7' : 'transparent',
+                              borderLeft: isActive ? '3px solid #b9952a' : '3px solid transparent',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span aria-hidden="true" style={{ fontSize: 15 }}>{item.icon}</span>
+                            <span style={{ flex: 1 }}>{item.label}</span>
+                            {item.badge && (
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 999, background: '#e2e8f0', color: '#475569' }}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+
+            <div style={{ paddingTop: 14, marginTop: 10, borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', background: '#f8fafc', color: '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              >
+                ↑ Back to Top
+              </button>
+            </div>
+          </aside>
+
+          <main id="dominus-main" style={{ flex: 1, minWidth: 0 }}>
+            <section id="dominus-overview" style={{ scrollMarginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 28 }}>
+              {healthCards.map((item) => (
+                <div key={item.label} style={{ background: '#fff', borderRadius: 18, padding: 20, boxShadow: '0 10px 28px rgba(26,39,68,0.06)' }}>
+                  <div style={{ color: item.tone, fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{item.label}</div>
+                  <div style={{ marginTop: 12, fontSize: 28, fontWeight: 800 }}>{item.value}</div>
+                </div>
+              ))}
+            </section>
+
+            <NewsletterAdmin />
 
 
-        <section id="dominus-vault" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-vault" style={{ scrollMarginTop: 24, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
               <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Archive</p>
@@ -1234,7 +1385,7 @@ const DominusDashboard = () => {
           )}
         </section>
 
-        <section id="dominus-pastoral-team" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-pastoral-team" style={{ scrollMarginTop: 24, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
             <div>
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Website Appearance</p>
@@ -1362,7 +1513,7 @@ const DominusDashboard = () => {
           </p>
         </section>
 
-        <section id="dominus-committees" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-committees" style={{ scrollMarginTop: 24, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
             <div>
               <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Information</p>
@@ -1407,7 +1558,7 @@ const DominusDashboard = () => {
           </div>
         </section>
 
-        <section id="dominus-communities" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-communities" style={{ scrollMarginTop: 24, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
             <div>
               <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Information</p>
@@ -1473,7 +1624,7 @@ const DominusDashboard = () => {
           </div>
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 18 }}>
+        <section id="dominus-announcements" style={{ scrollMarginTop: 24, display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 18 }}>
           <div style={{ background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
             <h2 style={{ marginTop: 0, marginBottom: 18, fontSize: 22 }}>Add parish announcement</h2>
             <form onSubmit={handleAddAnnouncement} style={{ display: 'grid', gap: 16 }}>
@@ -1590,7 +1741,7 @@ const DominusDashboard = () => {
           </div>
         </section>
 
-        <section style={{ marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-gallery" style={{ scrollMarginTop: 24, marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Memories</p>
             <h2 style={{ margin: '6px 0 0', fontSize: 24 }}>Photo Gallery</h2>
@@ -1812,7 +1963,7 @@ const DominusDashboard = () => {
           </div>
         </section>
 
-        <section style={{ marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-feast-days" style={{ scrollMarginTop: 24, marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Liturgical Calendar</p>
             <h2 style={{ margin: '6px 0 0', fontSize: 24 }}>Feast & Saint Days</h2>
@@ -1928,7 +2079,7 @@ const DominusDashboard = () => {
           </div>
         </section>
 
-        <section style={{ marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+        <section id="dominus-articles" style={{ scrollMarginTop: 24, marginTop: 20, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
           <div style={{ marginBottom: 20 }}>
             <p style={{ margin: 0, color: '#b9952a', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Parish Blog</p>
             <h2 style={{ margin: '6px 0 0', fontSize: 24 }}>Articles</h2>
@@ -2041,6 +2192,8 @@ const DominusDashboard = () => {
             </div>
           </div>
         </section>
+          </main>
+        </div>
       </div>
     </div>
   );

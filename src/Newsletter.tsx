@@ -360,7 +360,7 @@ const NewsletterAdmin = () => {
   );
 
   return (
-    <section id="dominus-newsletter" style={{ scrollMarginTop: 16, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
+    <section id="dominus-newsletter" style={{ scrollMarginTop: 24, marginBottom: 28, background: '#fff', borderRadius: 20, padding: 22, boxShadow: '0 12px 28px rgba(26,39,68,0.06)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
           <p style={{ margin: 0, color: gold, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Monthly Newsletter</p>
