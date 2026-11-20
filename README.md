@@ -1,4 +1,4 @@
-﻿# Holy Rosary Catholic Church Website
+# Holy Rosary Catholic Church Website
 
 Public parish website and private Dominus content dashboard for Holy Rosary Catholic Church, Wuse Zone 2, Abuja.
 
@@ -63,46 +63,26 @@ Create feast and saint days in Dominus each week with a title, date, category, o
 
 Gallery metadata is stored in SQLite; media objects are stored in Blob Storage. Existing SQLite gallery images remain available in the Vault and can be restored. Article pictures and pastoral team pictures continue to be stored in SQLite.
 
-## Vault and Media Storage (Supabase / Azure / R2)
+## Vault and Media Storage
 
-The Dominus **Vault** is the archive for articles, announcements, gallery media, pastoral team photos, and PDF publications. Archiving takes content off the public site but preserves it for restoration. Only archived Vault items can be permanently deleted. Gallery uploads and PDF publications require object storage; other content records and existing article/pastoral image data remain in SQLite.
+The Dominus **Vault** is the archive for articles, announcements, gallery media, pastoral team photos, and PDF publications. Archiving takes content off the public site but preserves it for restoration. Only archived Vault items can be permanently deleted. Gallery uploads and PDF publications use persistent storage; other content records and existing article/pastoral image data remain in SQLite.
 
-### Option 1: Supabase Storage (Recommended: Free tier, 1 GB storage, no card required)
+### Default: Host Persistent Disk Storage (Zero Setup Required!)
 
-1. Create a free account and project at [supabase.com](https://supabase.com).
-2. In the Supabase dashboard, go to **Storage** and click **New bucket**:
-   * Name: `dominus-media`
-   * Keep public bucket **OFF** (the site uses secure signed URLs).
-3. In **Project Settings > API**, copy your:
-   * **Project URL** (`https://<project-ref>.supabase.co`)
-   * **service_role secret key** (revealed under *Project API keys*)
-4. In your hosting environment (e.g. Azure **App Service > Configuration / Environment variables**), add:
+By default, the server stores uploaded photos, videos, and PDF publications **directly on the server's persistent disk** (in `./server/data/uploads` locally, or `/home/data/uploads` on Azure App Service alongside the SQLite database):
+* **No external accounts or API keys needed.**
+* Videos stream natively with standard HTTP 206 Range requests (scrubbing and seeking work smoothly).
+* Zero maintenance and zero risk of external accounts pausing or expiring.
 
-| Setting | Value |
-| --- | --- |
-| `SUPABASE_URL` | Your Project URL (e.g. `https://xyz.supabase.co`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your secret `service_role` key (keep private) |
-| `SUPABASE_BUCKET` | Optional; defaults to `dominus-media` |
+Optional environment variable:
+* `STORAGE_DISK_PATH`: Custom path for uploaded files on the host (defaults to `<database_directory>/uploads`).
 
-Alternatively, if using the Supabase S3 API (Project Settings > Storage > S3 Access Keys):
-set `SUPABASE_S3_ACCESS_KEY_ID`, `SUPABASE_S3_SECRET_ACCESS_KEY`, and `SUPABASE_URL`.
+### Optional Cloud Storage Alternatives
 
-### Option 2: Azure Blob Storage
-
-1. In the Azure portal create a **Storage account** (Standard, LRS; keep public blob access **disabled**).
-2. In the account, go to **Security + networking > Access keys** and copy a **Connection string**.
-3. In **App Service > Configuration > Application settings** add:
-
-| Setting | Value |
-| --- | --- |
-| `AZURE_STORAGE_CONNECTION_STRING` | The connection string (keep private) |
-| `AZURE_STORAGE_CONTAINER` | Optional; defaults to `dominus-media` |
-
-4. In the storage account, go to **Settings > Resource sharing (CORS) > Blob service**, add a rule: allowed origin = your site URL, methods `PUT, GET, HEAD, OPTIONS`, allowed headers `*`, exposed headers `*`.
-
-### Option 3: Cloudflare R2
-
-Set `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`.
+If you ever wish to use an external cloud object store instead, set the respective environment variables:
+1. **Supabase Storage:** Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+2. **Azure Blob Storage:** Set `AZURE_STORAGE_CONNECTION_STRING`.
+3. **Cloudflare R2:** Set `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`.
 ## Technology and Layout
 
 - React 19 and TypeScript for the site and dashboard UI.

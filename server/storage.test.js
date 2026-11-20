@@ -1,11 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAzureStorage, createStorageFromEnv } from './storage.js';
+import { createAzureStorage, createLocalStorage, createStorageFromEnv } from './storage.js';
 
 const key = Buffer.from('test-account-key-for-sas-signing-only').toString('base64');
 
-test('storage is not configured without credentials', () => {
-  assert.equal(createStorageFromEnv({}), null);
+test('local storage is default provider when no cloud credentials are provided', async () => {
+  const storage = createStorageFromEnv({});
+  assert.equal(storage.provider, 'local');
+  assert.equal(storage.label, 'Host Persistent Disk Storage');
+
+  const upload = await storage.uploadUrl('gallery/2026/test.jpg', 'image/jpeg', 900);
+  assert(upload.uploadUrl.includes('/api/storage/local-upload?key='));
+  assert(upload.uploadUrl.includes('sig='));
+
+  const download = await storage.downloadUrl('gallery/2026/test.jpg', 3600);
+  assert(download.includes('/api/public/storage/local-media?key='));
+  assert(download.includes('sig='));
+});
+
+test('local storage correctly verifies signatures and paths', () => {
+  const local = createLocalStorage({ baseDir: './temp-test-uploads', secret: 'test-secret' });
+  const expires = Date.now() + 60000;
+  const validSig = local.uploadUrl('test.jpg', 'image/jpeg', 60);
+
+  // Expired expires
+  assert.equal(local.verify('test.jpg', Date.now() - 1000, 'sig'), false);
+  // Missing params
+  assert.equal(local.verify('', expires, 'sig'), false);
 });
 
 test('Supabase storage is selected when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set', () => {

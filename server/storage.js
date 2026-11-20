@@ -7,10 +7,17 @@ import {
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createClient } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Object storage for photos, videos and PDFs. Files go straight from the browser
 // to storage using short-lived signed URLs; SQLite only keeps the metadata.
-// Provider priority: Supabase Storage > Azure Blob Storage > Cloudflare R2.
+// Provider priority:
+// 1. Supabase Storage (if configured)
+// 2. Azure Blob Storage (if configured)
+// 3. Cloudflare R2 (if configured)
+// 4. Local Host Persistent Disk Storage (Default: zero configuration required!)
 
 function parseConnectionString(value) {
   const parts = Object.fromEntries(
@@ -20,6 +27,72 @@ function parseConnectionString(value) {
     }),
   );
   return { accountName: parts.AccountName, accountKey: parts.AccountKey };
+}
+
+export function createLocalStorage({ baseDir, baseUrl = '', secret = 'dominus-local-storage-secret' }) {
+  fs.mkdirSync(baseDir, { recursive: true });
+
+  const sign = (key, expires) =>
+    createHmac('sha256', secret).update(`${key}:${expires}`).digest('base64url');
+
+  const safeResolve = (key) => {
+    const cleanKey = path.normalize(key).replace(/^(\.\.[\/\\])+/, '');
+    const resolved = path.resolve(baseDir, cleanKey);
+    const root = path.resolve(baseDir);
+    if (!resolved.startsWith(root)) throw new Error('Invalid storage key');
+    return resolved;
+  };
+
+  return {
+    provider: 'local',
+    label: 'Host Persistent Disk Storage',
+    baseDir,
+    async uploadUrl(key, contentType, seconds = 900) {
+      const expires = Date.now() + seconds * 1000;
+      const sig = sign(key, expires);
+      const url = `${baseUrl}/api/storage/local-upload?key=${encodeURIComponent(key)}&expires=${expires}&sig=${sig}`;
+      return {
+        uploadUrl: url,
+        uploadHeaders: { 'Content-Type': contentType },
+      };
+    },
+    async downloadUrl(key, seconds = 3600) {
+      const expires = Date.now() + seconds * 1000;
+      const sig = sign(key, expires);
+      return `${baseUrl}/api/public/storage/local-media?key=${encodeURIComponent(key)}&expires=${expires}&sig=${sig}`;
+    },
+    async size(key) {
+      try {
+        const filePath = safeResolve(key);
+        const stat = await fs.promises.stat(filePath);
+        return Number(stat.size);
+      } catch {
+        return 0;
+      }
+    },
+    async remove(key) {
+      try {
+        const filePath = safeResolve(key);
+        await fs.promises.rm(filePath, { force: true });
+      } catch {
+        // ignore deletion errors if file does not exist
+      }
+    },
+    verify(key, expires, sig) {
+      if (!key || !expires || !sig) return false;
+      const numExpires = Number(expires);
+      if (!Number.isFinite(numExpires) || Date.now() > numExpires) return false;
+      const expected = sign(key, expires);
+      try {
+        return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+      } catch {
+        return false;
+      }
+    },
+    resolvePath(key) {
+      return safeResolve(key);
+    },
+  };
 }
 
 export function createSupabaseStorage({ url, serviceKey, bucket = 'dominus-media' }) {
@@ -159,7 +232,16 @@ export function createR2Storage({ accountId, bucket, accessKeyId, secretAccessKe
   };
 }
 
-export function createStorageFromEnv(env = process.env) {
+export function createStorageFromEnv(env = process.env, options = {}) {
+  // If explicitly requested or no cloud provider configured, use Host Persistent Disk Storage
+  if (env.STORAGE_PROVIDER === 'local') {
+    return createLocalStorage({
+      baseDir: options.baseDir || path.resolve('server/data/uploads'),
+      baseUrl: options.baseUrl || '',
+      secret: options.secret || env.SESSION_SECRET || 'local-storage-secret',
+    });
+  }
+
   // 1. Supabase Storage (URL + Service Role Key, or S3 API)
   const supabaseBucket = env.SUPABASE_STORAGE_BUCKET || env.SUPABASE_BUCKET || 'dominus-media';
   if (env.SUPABASE_S3_ACCESS_KEY_ID && env.SUPABASE_S3_SECRET_ACCESS_KEY) {
@@ -202,7 +284,12 @@ export function createStorageFromEnv(env = process.env) {
     });
   }
 
-  return null;
+  // Default: Host Persistent Disk Storage (zero setup required!)
+  return createLocalStorage({
+    baseDir: options.baseDir || path.resolve('server/data/uploads'),
+    baseUrl: options.baseUrl || '',
+    secret: options.secret || env.SESSION_SECRET || 'local-storage-secret',
+  });
 }
 
-export const storageNotConfiguredMessage = 'Media storage is not configured. Set Supabase Storage (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) or Azure Blob Storage in the hosting environment.';
+export const storageNotConfiguredMessage = 'Media storage is not configured.';

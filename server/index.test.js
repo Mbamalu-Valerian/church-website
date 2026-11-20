@@ -190,7 +190,7 @@ test('Dominus API protects administration and publishes notices and articles', a
       headers: { Origin: origin, Cookie: cookie, 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename: 'parish.pdf', contentType: 'application/pdf', fileSize: 100, folderPath: 'Publications' }),
     });
-    assert.equal(vaultWithoutR2.status, 503, 'publication uploads should report when R2 is not configured');
+    assert.equal(vaultWithoutR2.status, 201, 'publication uploads should work immediately with local persistent storage');
     let publicGalleryResponse = await fetch(`${baseUrl}/api/public/gallery`);
     assert.equal(publicGalleryResponse.status, 200);
     assert.deepEqual((await publicGalleryResponse.json()).data, [], 'gallery should start empty');

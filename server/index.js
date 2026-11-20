@@ -35,7 +35,14 @@ const distPath = path.join(__dirname, '..', 'dist');
 const sessionDurationMs = 12 * 60 * 60 * 1000;
 const cookieName = 'dominus.sid';
 const sessionSecret = process.env.SESSION_SECRET || randomBytes(48).toString('base64url');
-const storage = createStorageFromEnv();
+const storageUploadsDir = process.env.STORAGE_DISK_PATH
+  ? path.resolve(process.env.STORAGE_DISK_PATH)
+  : path.join(path.dirname(databasePath), 'uploads');
+const storage = createStorageFromEnv(process.env, {
+  baseDir: storageUploadsDir,
+  baseUrl: '',
+  secret: sessionSecret,
+});
 
 const azureHostname = process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null;
 const rawOrigins = process.env.APP_ORIGIN || (production ? '' : 'http://localhost:5173,http://127.0.0.1:5173');
@@ -985,6 +992,47 @@ app.get('/api/public/gallery/:id/image', (req, res) => {
   res.setHeader('Content-Type', parsedImage.contentType);
   res.setHeader('Cache-Control', 'public, max-age=86400');
   return res.send(parsedImage.data);
+});
+
+// Local host storage upload endpoint (streaming binary data directly to persistent disk)
+app.put('/api/storage/local-upload', (req, res) => {
+  const key = typeof req.query.key === 'string' ? req.query.key : '';
+  const expires = typeof req.query.expires === 'string' ? req.query.expires : '';
+  const sig = typeof req.query.sig === 'string' ? req.query.sig : '';
+  if (!storage || storage.provider !== 'local') return res.status(400).json({ ok: false, error: 'Local storage not active.' });
+  if (!storage.verify(key, expires, sig)) return res.status(403).json({ ok: false, error: 'Upload link expired or invalid.' });
+
+  try {
+    const targetPath = storage.resolvePath(key);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    const out = fs.createWriteStream(targetPath);
+    req.pipe(out);
+    out.on('finish', () => res.status(200).json({ ok: true }));
+    out.on('error', (err) => res.status(500).json({ ok: false, error: err.message }));
+  } catch {
+    return res.status(400).json({ ok: false, error: 'Invalid storage path.' });
+  }
+});
+
+// Local host storage media streaming endpoint (with Range header support for video streaming)
+app.get('/api/public/storage/local-media', (req, res) => {
+  const key = typeof req.query.key === 'string' ? req.query.key : '';
+  const expires = typeof req.query.expires === 'string' ? req.query.expires : '';
+  const sig = typeof req.query.sig === 'string' ? req.query.sig : '';
+  if (!storage || storage.provider !== 'local') return res.status(404).end();
+  if (!storage.verify(key, expires, sig)) return res.status(403).end();
+
+  try {
+    const targetPath = storage.resolvePath(key);
+    if (!fs.existsSync(targetPath)) return res.status(404).end();
+    return res.sendFile(targetPath, {
+      acceptRanges: true,
+      cacheControl: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  } catch {
+    return res.status(404).end();
+  }
 });
 
 app.get('/api/public/gallery/:id/media', async (req, res, next) => {
