@@ -4,7 +4,7 @@ import { publicApi } from './lib/api';
 import NewsletterSignup from './NewsletterSignup';
 import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, GalleryImage, PastoralTeam, ParishCommittee, ParishCommunities } from './lib/api';
 
-// â”€â”€â”€ SVG Icon Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SVG Icon Components ──────────────────────────────────────────────────────
 type IconProps = { className?: string; style?: React.CSSProperties };
 
 export const feastColorOptions = [
@@ -178,9 +178,9 @@ const HandIcon = ({ className = '', style }: IconProps) => (
 );
 
 
-// â”€â”€â”€ Toast Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Toast Component ──────────────────────────────────────────────────────────
 
-// â”€â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Navbar ───────────────────────────────────────────────────────────────────
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -330,7 +330,7 @@ const Navbar = () => {
   );
 };
 
-// â”€â”€â”€ Hero Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Hero Section ─────────────────────────────────────────────────────────────
 const HeroSection = () => {
   const massTimes = [
     { day: 'Weekday Mass (Mon-Fri)', times: ['6:00 AM', '12:00 Noon', '6:00 PM'] },
@@ -430,7 +430,7 @@ const HeroSection = () => {
   );
 };
 
-// â”€â”€â”€ About Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── About Section ────────────────────────────────────────────────────────────
 const AboutSection = () => {
   return (
     <section id="about" className="py-20 section-gold">
@@ -450,7 +450,7 @@ const AboutSection = () => {
   );
 };
 
-// â”€â”€â”€ Parish Activities Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Parish Activities Section ─────────────────────────────────────────────────
 const ActivitiesSection = () => {
   const activities = [
     {
@@ -546,7 +546,7 @@ const ActivitiesSection = () => {
   );
 };
 
-// â”€â”€â”€ Parish Committees Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Parish Committees Section ────────────────────────────────────────────────
 export const defaultCommittees: ParishCommittee[] = [
     {
       id: 'liturgy',
@@ -693,7 +693,7 @@ const CommitteesSection = () => {
                     <p className="text-xs font-bold text-[#1a2744] uppercase tracking-wider">Choir Schedule:</p>
                     {c.choirList.map((ch: string, idx: number) => (
                       <div key={idx} className="text-xs text-gray-800 flex items-start gap-1.5">
-                        <span className="text-amber-600 font-bold">â€¢</span>
+                        <span className="text-amber-600 font-bold">•</span>
                         <span>{ch}</span>
                       </div>
                     ))}
@@ -715,7 +715,7 @@ const CommitteesSection = () => {
   );
 };
 
-// â”€â”€â”€ Community (Societies) Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Community (Societies) Section ────────────────────────────────────────────
 export const defaultCommunities: ParishCommunities = {
   organizations: [
     { id: 'cmo', name: 'Catholic Men Organization (CMO)', meeting: 'Every Second Saturday', thanksgiving: 'Every Second Sunday' },
@@ -728,7 +728,7 @@ export const defaultCommunities: ParishCommunities = {
     { id: 'eucharistic-adorers', name: 'Eucharistic Adorers', meeting: 'Mondays, 5:00 PM' },
     { id: 'purgatorian-society', name: 'Purgatorian Society', meeting: 'Mondays, 5:00 PM' },
     { id: 'st-jude', name: 'St. Jude Society', meeting: 'Wednesdays, 5:00 PM' },
-    { id: 'infant-jesus', name: 'Infant Jesus of Prague', meeting: 'Novena: 16thâ€“24th, 9-day monthly novena' },
+    { id: 'infant-jesus', name: 'Infant Jesus of Prague', meeting: 'Novena: 16th–24th, 9-day monthly novena' },
     { id: 'rosa-mistica', name: 'Rosa Mistica' },
     { id: 'legion-of-mary', name: 'Legion of Mary' },
     { id: 'holy-family', name: 'Holy Family' },
@@ -1023,7 +1023,7 @@ const CommunitySection = () => {
   );
 };
 
-// â”€â”€â”€ Upcoming Events Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Upcoming Events Section ───────────────────────────────────────────────────
 const EventsSection = () => {
   const [publishedAnnouncements, setPublishedAnnouncements] = useState<Array<{ id: number; title: string; description: string; date: string }>>([]);
   const [feastDays, setFeastDays] = useState<FeastDay[]>([]);
@@ -1168,7 +1168,7 @@ const EventsSection = () => {
   );
 };
 
-// â”€â”€â”€ Photo Gallery Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Photo Gallery Section ────────────────────────────────────────────────────
 export const compressGalleryImage = async (file: File): Promise<string> => {
   const imageUrl = URL.createObjectURL(file);
   try {
@@ -1364,7 +1364,7 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
                 <h1 className="m-0 font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">{album.title}</h1>
                 {album.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
               </div>
-              <p className="mt-2 text-sm text-gray-600">{displayDate(album.date)} Â· {album.photoCount} {album.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+              <p className="mt-2 text-sm text-gray-600">{displayDate(album.date)} · {album.photoCount} {album.photoCount === 1 ? 'Photo' : 'Photos'}</p>
               {album.description && <p className="mt-3 max-w-3xl leading-relaxed text-gray-700">{album.description}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
@@ -1430,7 +1430,7 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
                     </a>
                     <div className="p-5">
                       <h2 className="font-serif text-xl font-bold text-[#1a2744]">{item.title}</h2>
-                      <p className="mt-1 text-sm text-gray-500">{displayDate(item.date)} Â· {item.photoCount} {item.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+                      <p className="mt-1 text-sm text-gray-500">{displayDate(item.date)} · {item.photoCount} {item.photoCount === 1 ? 'Photo' : 'Photos'}</p>
                       {item.description && <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-gray-600">{item.description}</p>}
                       <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="btn-gold mt-5 inline-flex">See More</a>
                     </div>
@@ -1467,7 +1467,7 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
   );
 };
 
-// â”€â”€â”€ Articles Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Articles Section ─────────────────────────────────────────────────────────
 const ArticlesSection = () => {
   const [articles, setArticles] = useState<ParishArticle[]>([]);
 
@@ -1530,7 +1530,7 @@ const ArticlesSection = () => {
   );
 };
 
-// â”€â”€â”€ Pastoral Team Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Pastoral Team Section ────────────────────────────────────────────────────
 export const pastoralTeamDefaults: PastoralTeam = {
   hierarchy: [
     { id: 'archbishop', name: 'Most Rev. Dr. Ignatius Ayau Kaigama', title: 'Archbishop of Abuja', image: '/images/archbishop.jpg', specialization: 'Archbishop' },
@@ -1645,11 +1645,11 @@ const PastoralTeamSection = () => {
   );
 };
 
-// â”€â”€â”€ Office Hours Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Office Hours Section ─────────────────────────────────────────────────────
 const OfficeHoursSection = () => {
   const clergyOfficeDays = [
-    { role: 'Parish Priest', days: 'Tuesday â€“ Friday' },
-    { role: 'Assistant Parish Priest', days: 'Monday â€“ Thursday' },
+    { role: 'Parish Priest', days: 'Tuesday – Friday' },
+    { role: 'Assistant Parish Priest', days: 'Monday – Thursday' },
   ];
 
   const services = [
@@ -1763,7 +1763,7 @@ const OfficeHoursSection = () => {
   );
 };
 
-// â”€â”€â”€ Contact / Map Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Contact / Map Section ────────────────────────────────────────────────────
 const ContactSection = () => (
   <section id="contact" className="py-20 section-cream">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1887,7 +1887,7 @@ const ContactSection = () => (
   </section>
 );
 
-// â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Footer ───────────────────────────────────────────────────────────────────
 const Footer = () => {
   const quickLinks = [
     { label: 'Mass Schedule', href: '#home' },
@@ -1902,7 +1902,7 @@ const Footer = () => {
   ];
 
   const massSchedule = [
-    { day: 'Mon â€“ Fri', time: '6:00 AM, 12:00 Noon, 6:00 PM' },
+    { day: 'Mon – Fri', time: '6:00 AM, 12:00 Noon, 6:00 PM' },
     { day: 'Saturday', time: '7:00 AM' },
     { day: 'Sunday', time: '6:00 AM, 8:00 AM, 8:15 AM (Children), 10:00 AM, 6:00 PM' },
     { day: 'Confession', time: 'Thur (6:30 AM/PM), Sat (7:30 AM)' },
@@ -2032,7 +2032,7 @@ const Footer = () => {
   );
 };
 
-// â”€â”€â”€ Scroll Animation Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Scroll Animation Hook ────────────────────────────────────────────────────
 const useScrollAnimation = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -2052,7 +2052,7 @@ const useScrollAnimation = () => {
   }, []);
 };
 
-// â”€â”€â”€ Back to Top Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Back to Top Button ───────────────────────────────────────────────────────
 const BackToTop = () => {
   const [visible, setVisible] = useState(false);
 
@@ -2074,9 +2074,9 @@ const BackToTop = () => {
   );
 };
 
-// â”€â”€â”€ Dominus Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dominus Dashboard ───────────────────────────────────────────────────────
 
-// â”€â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main App ─────────────────────────────────────────────────────────────────
 const DominusDashboard = lazy(() => import('./Dominus'));
 
 export default function App() {

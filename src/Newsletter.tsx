@@ -95,8 +95,8 @@ const StoryEditor = ({ item, index, total, locked, onChanged, onMove, onDelete }
         <strong style={{ color: navy }}>{index === 0 ? 'Lead story' : `Headline ${index + 1}`}</strong>
         {!locked && (
           <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" aria-label="Move up" disabled={index === 0 || busy} onClick={() => onMove('up')} style={btn('ghost', index === 0 || busy)}>â†‘</button>
-            <button type="button" aria-label="Move down" disabled={index === total - 1 || busy} onClick={() => onMove('down')} style={btn('ghost', index === total - 1 || busy)}>â†“</button>
+            <button type="button" aria-label="Move up" disabled={index === 0 || busy} onClick={() => onMove('up')} style={btn('ghost', index === 0 || busy)}>↑</button>
+            <button type="button" aria-label="Move down" disabled={index === total - 1 || busy} onClick={() => onMove('down')} style={btn('ghost', index === total - 1 || busy)}>↓</button>
             <button type="button" disabled={busy} onClick={onDelete} style={btn('danger', busy)}>Remove</button>
           </div>
         )}
@@ -114,7 +114,7 @@ const StoryEditor = ({ item, index, total, locked, onChanged, onMove, onDelete }
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
             <div>
               <label style={label} htmlFor={`link-${item.id}`}>Link (optional)</label>
-              <input id={`link-${item.id}`} disabled={locked} maxLength={500} value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https://â€¦" style={field} />
+              <input id={`link-${item.id}`} disabled={locked} maxLength={500} value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="https://…" style={field} />
             </div>
             <div>
               <label style={label} htmlFor={`linklabel-${item.id}`}>Button text</label>
@@ -142,7 +142,7 @@ const StoryEditor = ({ item, index, total, locked, onChanged, onMove, onDelete }
       </div>
       {!locked && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
-          <button type="button" disabled={busy || !dirty} onClick={() => void run(() => api.updateItem(item.id, { headline, body, linkUrl, linkLabel }), 'Saved.')} style={btn('primary', busy || !dirty)}>{busy ? 'Savingâ€¦' : 'Save headline'}</button>
+          <button type="button" disabled={busy || !dirty} onClick={() => void run(() => api.updateItem(item.id, { headline, body, linkUrl, linkLabel }), 'Saved.')} style={btn('primary', busy || !dirty)}>{busy ? 'Saving…' : 'Save headline'}</button>
           {dirty && <span style={{ fontSize: 12, color: '#b45309' }}>Unsaved changes</span>}
           {message && !dirty && <span role="status" style={{ fontSize: 13, color: '#166534' }}>{message}</span>}
           {error && <span role="alert" style={{ fontSize: 13, color: '#b91c1c' }}>{error}</span>}
@@ -377,8 +377,8 @@ const NewsletterAdmin = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
-        {stat('Active subscribers', String(overview?.activeSubscribers ?? 'â€“'), navy, overview ? `${overview.totalSubscribers} on the list in total` : '')}
-        {stat('Gmail', overview ? (overview.mailConfigured ? 'Connected' : 'Not connected') : 'â€“', overview?.mailConfigured ? '#166534' : '#b91c1c', overview?.mailConfigured ? overview.fromAddress : 'Add GMAIL_USER and GMAIL_APP_PASSWORD in Azure')}
+        {stat('Active subscribers', String(overview?.activeSubscribers ?? '–'), navy, overview ? `${overview.totalSubscribers} on the list in total` : '')}
+        {stat('Gmail', overview ? (overview.mailConfigured ? 'Connected' : 'Not connected') : '–', overview?.mailConfigured ? '#166534' : '#b91c1c', overview?.mailConfigured ? overview.fromAddress : 'Add GMAIL_USER and GMAIL_APP_PASSWORD in Azure')}
         {stat('Next automatic send', overview?.readyIssue ? overview.nextAutomaticSend : 'Nothing queued', overview?.readyIssue ? navy : '#b45309', overview?.readyIssue ? `Issue: ${overview.readyIssue.label}` : 'Mark an issue Ready to queue it')}
       </div>
       {overview && !overview.mailConfigured && (
@@ -401,7 +401,7 @@ const NewsletterAdmin = () => {
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
                   {entry.itemCount} headline{entry.itemCount === 1 ? '' : 's'}
-                  {entry.status === 'Sent' || entry.status === 'Sending' ? ` Â· ${entry.sentCount}/${entry.recipientsTotal} delivered${entry.failedCount ? ` Â· ${entry.failedCount} failed` : ''}` : ''}
+                  {entry.status === 'Sent' || entry.status === 'Sending' ? ` · ${entry.sentCount}/${entry.recipientsTotal} delivered${entry.failedCount ? ` · ${entry.failedCount} failed` : ''}` : ''}
                 </div>
               </button>
             ))}
@@ -417,7 +417,7 @@ const NewsletterAdmin = () => {
                     {issue.status !== 'Sending' && <button type="button" disabled={busy} onClick={deleteIssue} style={btn('danger', busy)}>Delete issue</button>}
                   </div>
                   {issue.status === 'Sent' && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#166534' }}>Sent{issue.sentAt ? ` on ${issue.sentAt}` : ''} to {issue.sentCount} of {issue.recipientsTotal} subscribers{issue.failedCount ? ` (${issue.failedCount} failed)` : ''}. Sent issues are locked.</p>}
-                  {issue.status === 'Sending' && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#1e40af' }}>Sendingâ€¦ {issue.sentCount} of {issue.recipientsTotal} delivered. Gmail allows about {overview?.dailyLimit ?? 400} emails per day, so a large list continues automatically the next day.</p>}
+                  {issue.status === 'Sending' && <p style={{ margin: '0 0 12px', fontSize: 14, color: '#1e40af' }}>Sending… {issue.sentCount} of {issue.recipientsTotal} delivered. Gmail allows about {overview?.dailyLimit ?? 400} emails per day, so a large list continues automatically the next day.</p>}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                     <div>
                       <label style={label} htmlFor="rosarian-label">Issue label</label>
@@ -430,7 +430,7 @@ const NewsletterAdmin = () => {
                   </div>
                   <div style={{ marginTop: 12 }}>
                     <label style={label} htmlFor="rosarian-intro">Opening message from the parish office (optional)</label>
-                    <textarea id="rosarian-intro" disabled={locked} maxLength={3000} rows={4} value={metaIntro} onChange={(event) => setMetaIntro(event.target.value)} placeholder="Dear parishioners, â€¦" style={{ ...field, resize: 'vertical', lineHeight: 1.5 }} />
+                    <textarea id="rosarian-intro" disabled={locked} maxLength={3000} rows={4} value={metaIntro} onChange={(event) => setMetaIntro(event.target.value)} placeholder="Dear parishioners, …" style={{ ...field, resize: 'vertical', lineHeight: 1.5 }} />
                   </div>
                   {!locked && <div style={{ marginTop: 12 }}><button type="button" disabled={busy || !metaDirty} onClick={() => void saveMeta()} style={btn('primary', busy || !metaDirty)}>Save issue details</button>{metaDirty && <span style={{ marginLeft: 10, fontSize: 12, color: '#b45309' }}>Unsaved changes</span>}</div>}
                 </div>
@@ -501,7 +501,7 @@ const NewsletterAdmin = () => {
             <button type="submit" style={btn('gold')}>Add subscriber</button>
           </form>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input value={subscriberQuery} onChange={(event) => setSubscriberQuery(event.target.value)} placeholder="Search name, email, phoneâ€¦" aria-label="Search subscribers" style={{ ...field, width: 280 }} />
+            <input value={subscriberQuery} onChange={(event) => setSubscriberQuery(event.target.value)} placeholder="Search name, email, phone…" aria-label="Search subscribers" style={{ ...field, width: 280 }} />
             <select value={subscriberStatus} onChange={(event) => setSubscriberStatus(event.target.value)} aria-label="Filter by status" style={{ ...field, width: 170 }}>
               <option value="">All statuses</option><option value="Active">Active</option><option value="Unsubscribed">Unsubscribed</option>
             </select>
@@ -519,8 +519,8 @@ const NewsletterAdmin = () => {
                   <tr key={person.id} style={{ borderTop: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '10px 12px' }}>{person.name}</td>
                     <td style={{ padding: '10px 12px' }}>{person.email}</td>
-                    <td style={{ padding: '10px 12px' }}>{person.whatsapp || 'â€“'}</td>
-                    <td style={{ padding: '10px 12px' }}>{person.phone || 'â€“'}</td>
+                    <td style={{ padding: '10px 12px' }}>{person.whatsapp || '–'}</td>
+                    <td style={{ padding: '10px 12px' }}>{person.phone || '–'}</td>
                     <td style={{ padding: '10px 12px' }}><Chip value={person.status} /></td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{person.createdAt.slice(0, 10)}</td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>

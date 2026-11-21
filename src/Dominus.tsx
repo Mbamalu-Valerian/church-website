@@ -1363,7 +1363,7 @@ const DominusDashboard = () => {
                       : <img src={item.imageUrl} alt="" style={{ width: 76, height: 56, borderRadius: 7, objectFit: 'cover' }} />)}
                     <div>
                     <strong>{item.title}</strong>
-                    <div style={{ color: '#64748b', fontSize: 12, marginTop: 3 }}>{item.kind} Â· {item.folder || item.date} Â· {item.archivedAt ? 'Archived' : item.status}</div>
+                    <div style={{ color: '#64748b', fontSize: 12, marginTop: 3 }}>{item.kind} · {item.folder || item.date} · {item.archivedAt ? 'Archived' : item.status}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 7 }}>
@@ -1379,7 +1379,7 @@ const DominusDashboard = () => {
           {vaultPage.total > vaultPage.limit && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
               <button type="button" disabled={vaultOffset === 0 || vaultLoading} onClick={() => void fetchVault(Math.max(0, vaultOffset - vaultPage.limit))} style={{ border: 0, borderRadius: 7, padding: '8px 11px', cursor: 'pointer' }}>Previous</button>
-              <span style={{ color: '#64748b', fontSize: 12 }}>{vaultOffset + 1}â€“{Math.min(vaultOffset + vaultPage.limit, vaultPage.total)} of {vaultPage.total}</span>
+              <span style={{ color: '#64748b', fontSize: 12 }}>{vaultOffset + 1}–{Math.min(vaultOffset + vaultPage.limit, vaultPage.total)} of {vaultPage.total}</span>
               <button type="button" disabled={vaultOffset + vaultPage.limit >= vaultPage.total || vaultLoading} onClick={() => void fetchVault(vaultOffset + vaultPage.limit)} style={{ border: 0, borderRadius: 7, padding: '8px 11px', cursor: 'pointer' }}>Next</button>
             </div>
           )}
@@ -1675,7 +1675,7 @@ const DominusDashboard = () => {
                       <input type="datetime-local" value={draftPopupEndAt} onChange={(event) => setDraftPopupEndAt(event.target.value)} style={{ minWidth: 0, padding: 10, border: '1px solid #cbd5e1', borderRadius: 8 }} />
                     </label>
                   </div>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: 12 }}>Schedule times use this deviceâ€™s local timezone. Visitors see an active popup once per campaign; closing it dismisses that campaign in their browser.</p>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: 12 }}>Schedule times use this device's local timezone. Visitors see an active popup once per campaign; closing it dismisses that campaign in their browser.</p>
                 </div>
               </details>
 
@@ -1813,10 +1813,10 @@ const DominusDashboard = () => {
                     <article key={album.id} style={{ display: 'grid', alignContent: 'start', gap: 10, overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff' }}>
                       {album.coverImage
                         ? <img src={album.coverImage.thumbnailUrl} alt="" style={{ width: '100%', height: 140, objectFit: 'cover' }} />
-                        : <div aria-hidden="true" style={{ display: 'grid', placeItems: 'center', height: 140, background: '#f1f5f9', color: '#64748b', fontSize: 32 }}>â–°</div>}
+                        : <div aria-hidden="true" style={{ display: 'grid', placeItems: 'center', height: 140, background: '#f1f5f9', color: '#64748b', fontSize: 32 }}>▫</div>}
                       <div style={{ display: 'grid', gap: 4, padding: '0 12px' }}>
                         <strong style={{ overflowWrap: 'anywhere' }}>{album.title}</strong>
-                        <span style={{ color: '#64748b', fontSize: 12 }}>{album.date || 'No event date'} Â· {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}{album.isFeatured ? ' Â· Featured' : ''}</span>
+                        <span style={{ color: '#64748b', fontSize: 12 }}>{album.date || 'No event date'} · {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}{album.isFeatured ? ' · Featured' : ''}</span>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, padding: '0 12px 12px' }}>
                         <button type="button" onClick={() => { setGalleryOpenAlbumId(album.id); setGallerySelectedAlbumId(album.id); }} style={{ border: 0, borderRadius: 8, padding: '7px 10px', fontWeight: 700, cursor: 'pointer', background: '#dbeafe', color: '#1e3a8a' }}>Open folder</button>
@@ -1913,7 +1913,7 @@ const DominusDashboard = () => {
                   : <img src={image.thumbnailUrl} alt="" style={{ width: 88, height: 66, borderRadius: 8, objectFit: 'cover' }} />}
                 <div style={{ minWidth: 0 }}>
                   <strong style={{ overflowWrap: 'anywhere' }}>{image.caption}</strong>
-                  <div style={{ color: '#64748b', fontSize: 13 }}>{image.folderPath ? `${image.folderPath} Â· ` : ''}{image.mediaType === 'video' ? 'Video' : 'Photo'} Â· {image.isFeatured ? 'Featured Â· ' : ''}{image.status}</div>
+                  <div style={{ color: '#64748b', fontSize: 13 }}>{image.folderPath ? `${image.folderPath} · ` : ''}{image.mediaType === 'video' ? 'Video' : 'Photo'} · {image.isFeatured ? 'Featured · ' : ''}{image.status}</div>
                 </div>
                 <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
                   <label style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', gap: 8, color: '#475569', fontSize: 12, fontWeight: 700 }}>
@@ -2043,7 +2043,7 @@ const DominusDashboard = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start', flexWrap: 'wrap' }}>
                           <div>
                             <strong>{item.title}</strong>
-                            <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>{item.date} Â· {item.category}</div>
+                            <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>{item.date} · {item.category}</div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ width: 12, height: 12, borderRadius: '50%', background: item.color, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} title={feastColorLabels[item.color] || 'Liturgical color'} />
@@ -2066,7 +2066,7 @@ const DominusDashboard = () => {
                       <div key={item.id} style={{ borderLeft: '3px solid #d4af37', padding: '6px 0 6px 10px' }}>
                         <strong>{item.title}</strong>
                         <div style={{ marginTop: 3, color: '#64748b', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {item.date} Â· {item.category}
+                          {item.date} · {item.category}
                           <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
                           {feastColorLabels[item.color] || 'Liturgical'}
                         </div>
@@ -2181,7 +2181,7 @@ const DominusDashboard = () => {
                       <div key={article.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderLeft: '3px solid #d4af37', padding: '6px 0 6px 10px' }}>
                         <div>
                           <strong>{article.title}</strong>
-                          <div style={{ marginTop: 3, color: '#64748b', fontSize: 12 }}>{article.publishDate}{article.publishDate > getTodayInAbuja() ? ' Â· Scheduled' : ' Â· On blog'}</div>
+                          <div style={{ marginTop: 3, color: '#64748b', fontSize: 12 }}>{article.publishDate}{article.publishDate > getTodayInAbuja() ? ' · Scheduled' : ' · On blog'}</div>
                         </div>
                         <button type="button" onClick={() => void handleDeleteArticle(article.id)} style={{ flexShrink: 0, border: 0, borderRadius: 6, padding: '6px 9px', background: '#fef3c7', color: '#92400e', fontWeight: 700, cursor: 'pointer' }}>Archive</button>
                       </div>
