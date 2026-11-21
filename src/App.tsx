@@ -118,7 +118,7 @@ const AnnouncementPopup = () => {
   return (
     <div role="presentation" onClick={closePopup} className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4">
       <section role="dialog" aria-modal="true" aria-labelledby="parish-popup-title" onClick={(event) => event.stopPropagation()} className="relative max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
-        <button type="button" onClick={closePopup} aria-label="Close popup" className="absolute right-3 top-3 rounded-full bg-slate-100 px-3 py-1 text-2xl leading-none text-slate-700">Ã—</button>
+        <button type="button" onClick={closePopup} aria-label="Close popup" className="absolute right-3 top-3 rounded-full bg-slate-100 px-3 py-1 text-2xl leading-none text-slate-700">×</button>
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{popupKind}</p>
         {popup.popupImageData && <img src={popup.popupImageData} alt="" className="mb-4 max-h-64 w-full rounded-xl object-cover" />}
         <h2 id="parish-popup-title" className="mb-3 pr-8 font-serif text-2xl font-bold text-[#1a2744]">{popup.title}</h2>
@@ -174,6 +174,37 @@ const UsersIcon = ({ className = '', style }: IconProps) => (
 const HandIcon = ({ className = '', style }: IconProps) => (
   <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 11V6a2 2 0 00-2-2v0a2 2 0 00-2 2v0" /><path d="M14 10V4a2 2 0 00-2-2v0a2 2 0 00-2 2v2" /><path d="M10 10.5V6a2 2 0 00-2-2v0a2 2 0 00-2 2v8" /><path d="M18 8a2 2 0 114 0v6a8 8 0 01-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 012.83-2.82L7 15" />
+  </svg>
+);
+
+const ClipboardListIcon = ({ className = '', style }: IconProps) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    <path d="M9 12h6" />
+    <path d="M9 16h6" />
+  </svg>
+);
+
+const PenIcon = ({ className = '', style }: IconProps) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+const CertificateIcon = ({ className = '', style }: IconProps) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+  </svg>
+);
+
+const FirstAidIcon = ({ className = '', style }: IconProps) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="M12 8v8" />
+    <path d="M8 12h8" />
   </svg>
 );
 
@@ -1268,8 +1299,8 @@ const GallerySection = () => {
           aria-label="Parish photo viewer"
           onClick={() => setActiveImageIndex(null)}
         >
-          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">Ã—</button>
-          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + previewImages.length) % previewImages.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-6">â€¹</button>}
+          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
+          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + previewImages.length) % previewImages.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-6">‹</button>}
           <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
             {previewImages[activeImageIndex].mediaType === 'video'
               ? <video src={previewImages[activeImageIndex].viewerUrl} controls autoPlay className="max-h-[78vh] max-w-full rounded-lg" />
@@ -1277,7 +1308,7 @@ const GallerySection = () => {
             <p className="m-0 text-center text-lg font-semibold text-white">{previewImages[activeImageIndex].caption}</p>
             <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {previewImages.length}</p>
           </div>
-          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % previewImages.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-6">â€º</button>}
+          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % previewImages.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-6">›</button>}
         </div>
       )}
     </section>
@@ -1451,8 +1482,8 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
           aria-label="Gallery photo viewer"
           onClick={() => setActiveImageIndex(null)}
         >
-          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">Ã—</button>
-          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + album.photos.length) % album.photos.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:left-6">â€¹</button>}
+          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
+          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + album.photos.length) % album.photos.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:left-6">‹</button>}
           <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
             {album.photos[activeImageIndex].mediaType === 'video'
               ? <video src={album.photos[activeImageIndex].viewerUrl} controls autoPlay className="max-h-[78vh] max-w-full rounded-lg" />
@@ -1460,7 +1491,7 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
             <p className="m-0 text-center text-lg font-semibold text-white">{album.photos[activeImageIndex].caption}</p>
             <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {album.photos.length}</p>
           </div>
-          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % album.photos.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:right-6">â€º</button>}
+          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % album.photos.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:right-6">›</button>}
         </div>
       )}
     </div>
@@ -1653,11 +1684,11 @@ const OfficeHoursSection = () => {
   ];
 
   const services = [
-    { icon: 'ðŸ“‹', name: 'Baptism Registration' },
-    { icon: 'âœ', name: 'Mass Intention Submission' },
-    { icon: 'ðŸ“œ', name: 'Church Certificates' },
-    { icon: 'ðŸ“ž', name: 'Emergency Pastoral Care' },
-    { icon: 'âš•ï¸', name: 'Youth Medical Services' },
+    { icon: <ClipboardListIcon className="w-5 h-5" style={{ color: '#a07830' }} />, name: 'Baptism Registration' },
+    { icon: <PenIcon className="w-5 h-5" style={{ color: '#a07830' }} />, name: 'Mass Intention Submission' },
+    { icon: <CertificateIcon className="w-5 h-5" style={{ color: '#a07830' }} />, name: 'Church Certificates' },
+    { icon: <PhoneIcon className="w-5 h-5" style={{ color: '#a07830' }} />, name: 'Emergency Pastoral Care' },
+    { icon: <FirstAidIcon className="w-5 h-5" style={{ color: '#a07830' }} />, name: 'Youth Medical Services' },
   ];
 
   return (
@@ -1709,7 +1740,7 @@ const OfficeHoursSection = () => {
               <div className="divide-y divide-gray-100">
                 {services.map((svc, i) => (
                   <div key={i} className="flex items-center gap-4 px-6 py-4">
-                    <span className="text-2xl flex-shrink-0">{svc.icon}</span>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(201,168,76,0.15)' }}>{svc.icon}</div>
                     <p className="font-semibold text-sm" style={{ color: '#1a2744' }}>{svc.name}</p>
                   </div>
                 ))}
@@ -1956,7 +1987,7 @@ const Footer = () => {
                   <li key={link.href}>
                     <a href={link.href}
                       className="text-gray-400 text-sm hover:text-white transition-colors flex items-center gap-2 group">
-                      <span className="text-xs transition-transform group-hover:translate-x-1" style={{ color: '#c9a84c' }}>â€º</span>
+                      <span className="text-xs transition-transform group-hover:translate-x-1" style={{ color: '#c9a84c' }}>›</span>
                       {link.label}
                     </a>
                   </li>
@@ -2019,7 +2050,7 @@ const Footer = () => {
           <div className="border-t border-white/10 pt-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-gray-500 text-xs text-center sm:text-left">
-                Â© {new Date().getFullYear()} Holy Rosary Catholic Church, Wuse Zone 2, Abuja. All rights reserved.
+                © {new Date().getFullYear()} Holy Rosary Catholic Church, Wuse Zone 2, Abuja. All rights reserved.
               </p>
               <div className="flex items-center gap-1 text-gray-500 text-xs">
                 Made by Valerian for Gods Glory.
