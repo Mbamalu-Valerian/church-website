@@ -1015,7 +1015,6 @@ const DominusDashboard = () => {
   };
 
   if (!isAuthenticated) {
-    if (loading) return <div role="status" style={{ padding: 32, color: '#1a2744' }}>Checking secure session...</div>;
     return (
       <div style={{
         minHeight: '100dvh',

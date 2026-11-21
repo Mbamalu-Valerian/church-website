@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { publicApi } from './lib/api';
 import NewsletterSignup from './NewsletterSignup';

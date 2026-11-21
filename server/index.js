@@ -572,18 +572,20 @@ const getSessionToken = (req) => {
   return actual.length === expected.length && timingSafeEqual(actual, expected) ? token : null;
 };
 
-const setSessionCookie = (res, token) => {
+const setSessionCookie = (res, token, req = null) => {
+  const isHttps = req ? (req.secure || req.get('x-forwarded-proto') === 'https') : false;
   const attributes = [
     `${cookieName}=${encodeURIComponent(`${token}.${signToken(token)}`)}`,
     'HttpOnly', 'SameSite=Lax', 'Path=/', `Max-Age=${Math.floor(sessionDurationMs / 1000)}`,
   ];
-  if (production) attributes.push('Secure');
+  if (isHttps) attributes.push('Secure');
   res.setHeader('Set-Cookie', attributes.join('; '));
 };
 
-const clearSessionCookie = (res) => {
+const clearSessionCookie = (res, req = null) => {
+  const isHttps = req ? (req.secure || req.get('x-forwarded-proto') === 'https') : false;
   const attributes = [`${cookieName}=`, 'HttpOnly', 'SameSite=Lax', 'Path=/', 'Max-Age=0'];
-  if (production) attributes.push('Secure');
+  if (isHttps) attributes.push('Secure');
   res.setHeader('Set-Cookie', attributes.join('; '));
 };
 
@@ -666,7 +668,7 @@ app.post('/api/login', checkLoginRateLimit, (req, res) => {
   const token = randomBytes(32).toString('base64url');
   database.prepare('INSERT INTO sessions (token_hash, username, expires_at) VALUES (?, ?, ?)')
     .run(makeTokenHash(token), admin.username, Date.now() + sessionDurationMs);
-  setSessionCookie(res, token);
+  setSessionCookie(res, token, req);
   return res.json({ ok: true, authenticated: true });
 });
 
@@ -677,7 +679,7 @@ app.get('/api/session', requireSession, (req, res) => {
 app.post('/api/logout', (req, res) => {
   const token = getSessionToken(req);
   if (token) database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(makeTokenHash(token));
-  clearSessionCookie(res);
+  clearSessionCookie(res, req);
   res.json({ ok: true });
 });
 
