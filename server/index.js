@@ -10,10 +10,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-try {
-  process.loadEnvFile(path.resolve(process.cwd(), '.env'));
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
+const projectRootEnv = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.env');
+for (const envCandidate of [path.resolve(process.cwd(), '.env'), projectRootEnv]) {
+  try {
+    if (fs.existsSync(envCandidate)) {
+      process.loadEnvFile(envCandidate);
+      break;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
 }
 
 const __filename = fileURLToPath(import.meta.url);
