@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dominus
+Disallow: /api/
+
+Sitemap: https://hrccw.com.ng/sitemap.xml
