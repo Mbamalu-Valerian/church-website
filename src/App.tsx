@@ -1206,26 +1206,85 @@ export const compressGalleryImage = async (file: File): Promise<string> => {
     const image = new Image();
     image.src = imageUrl;
     await image.decode();
-    const maxDimension = 1600;
+    const maxDimension = 1200;
     const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Unable to prepare the selected photo.');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
+    const targetBytes = 220 * 1024;
+    let lastImageData = '';
     for (let attempt = 0; attempt < 8; attempt += 1) {
       context.fillStyle = '#fff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL('image/jpeg', Math.max(0.45, 0.82 - attempt * 0.07));
+      const imageData = canvas.toDataURL('image/jpeg', Math.max(0.55, 0.82 - attempt * 0.05));
+      lastImageData = imageData;
       const base64 = imageData.slice(imageData.indexOf(',') + 1);
       const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
-      if (Math.floor(base64.length * 3 / 4) - padding <= 1024 * 1024) return imageData;
-      canvas.width = Math.max(1, Math.round(canvas.width * 0.8));
-      canvas.height = Math.max(1, Math.round(canvas.height * 0.8));
+      if (Math.floor(base64.length * 3 / 4) - padding <= targetBytes) return imageData;
+      canvas.width = Math.max(1, Math.round(canvas.width * 0.85));
+      canvas.height = Math.max(1, Math.round(canvas.height * 0.85));
     }
+    if (lastImageData) return lastImageData;
     throw new Error('This photo could not be compressed enough. Choose a smaller image.');
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+};
+
+export const compressGalleryPhotoFile = async (file: File): Promise<File> => {
+  const imageUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = imageUrl;
+    await image.decode();
+    const maxDimension = 1440;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+
+    const encodeBlob = (mimeType: string, quality: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, quality));
+
+    const targetBytes = 220 * 1024;
+    let bestBlob: Blob | null = null;
+    let chosenType = 'image/webp';
+
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const quality = Math.max(0.58, 0.82 - attempt * 0.05);
+      let blob = await encodeBlob('image/webp', quality);
+      if (!blob || blob.type !== 'image/webp') {
+        chosenType = 'image/jpeg';
+        blob = await encodeBlob('image/jpeg', quality);
+      } else {
+        chosenType = 'image/webp';
+      }
+      if (blob) {
+        bestBlob = blob;
+        if (blob.size <= targetBytes) break;
+      }
+      canvas.width = Math.max(1, Math.round(canvas.width * 0.85));
+      canvas.height = Math.max(1, Math.round(canvas.height * 0.85));
+    }
+
+    if (!bestBlob) return file;
+    if (bestBlob.size >= file.size && file.size <= targetBytes) return file;
+    const ext = chosenType === 'image/webp' ? '.webp' : '.jpg';
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'parish-photo';
+    return new File([bestBlob], `${baseName}${ext}`, { type: chosenType, lastModified: Date.now() });
   } finally {
     URL.revokeObjectURL(imageUrl);
   }

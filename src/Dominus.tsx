@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { authApi, adminApi } from './lib/api';
 import NewsletterAdmin from './Newsletter';
 import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryImage, PastoralImageKey, PastoralImages, PastoralTeam, PastoralTeamMember, ParishCommittee, CommunityGroupKey, CommunityItem, ParishCommunities, VaultItem, VaultPage } from './lib/api';
-import { feastColorOptions, feastColorLabels, ParishArticleMarkdown, compressGalleryImage, defaultCommittees, defaultCommunities, pastoralTeamDefaults } from './App';
+import { feastColorOptions, feastColorLabels, ParishArticleMarkdown, compressGalleryImage, compressGalleryPhotoFile, defaultCommittees, defaultCommunities, pastoralTeamDefaults } from './App';
 
 const DominusDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -632,18 +632,20 @@ const DominusDashboard = () => {
         continue;
       }
       try {
-        const contentType = file.type || (isVideo ? 'video/mp4' : 'image/jpeg');
+        setGalleryMessage(`${isVideo ? 'Uploading video' : 'Compressing & uploading photo'}: ${index + 1} of ${mediaFiles.length}...`);
+        const readyFile = isVideo ? file : await compressGalleryPhotoFile(file);
+        const contentType = readyFile.type || (isVideo ? 'video/mp4' : 'image/jpeg');
         const upload = await adminApi.createGalleryUpload({
-          filename: file.name,
+          filename: readyFile.name,
           contentType,
-          fileSize: file.size,
+          fileSize: readyFile.size,
           albumTitle,
           folderPath,
         });
         const response = await fetch(upload.uploadUrl, {
           method: 'PUT',
           headers: upload.uploadHeaders || { 'Content-Type': contentType },
-          body: file,
+          body: readyFile,
         });
         if (!response.ok) throw new Error(`Upload to storage failed with HTTP ${response.status}.`);
         const created = await adminApi.completeGalleryUpload(upload.id);
@@ -651,7 +653,7 @@ const DominusDashboard = () => {
         setGallerySelectedAlbumId(created.albumId);
         setGalleryOpenAlbumId(created.albumId);
         uploaded += 1;
-        setGalleryMessage(`Uploading media: ${index + 1} of ${mediaFiles.length} checked.`);
+        setGalleryMessage(`Uploaded ${index + 1} of ${mediaFiles.length} (${Math.max(1, Math.round(readyFile.size / 1024))} KB).`);
       } catch (error) {
         failures.push(`${file.name}: ${errorMessage(error, 'upload failed')}`);
       }
