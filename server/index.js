@@ -386,13 +386,15 @@ if (!feastDaySeedApplied && fs.existsSync(feastDaySeedPath)) {
 }
 
 if (process.env.DOMINUS_USERNAME && process.env.DOMINUS_PASSWORD) {
+  const adminUsername = process.env.DOMINUS_USERNAME.trim();
+  const adminPassword = process.env.DOMINUS_PASSWORD.trim();
   const salt = randomBytes(16).toString('hex');
-  const passwordHash = scryptSync(process.env.DOMINUS_PASSWORD, salt, 64).toString('hex');
-  database.prepare('DELETE FROM admin_users WHERE username != ?').run(process.env.DOMINUS_USERNAME);
+  const passwordHash = scryptSync(adminPassword, salt, 64).toString('hex');
+  database.prepare('DELETE FROM admin_users WHERE LOWER(TRIM(username)) != LOWER(?)').run(adminUsername);
   database.prepare(`
     INSERT INTO admin_users (username, password_salt, password_hash) VALUES (?, ?, ?)
     ON CONFLICT(username) DO UPDATE SET password_salt = excluded.password_salt, password_hash = excluded.password_hash
-  `).run(process.env.DOMINUS_USERNAME, salt, passwordHash);
+  `).run(adminUsername, salt, passwordHash);
 } else {
   console.warn('Dominus login is disabled until DOMINUS_USERNAME and DOMINUS_PASSWORD are configured.');
 }
@@ -657,13 +659,19 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/login', checkLoginRateLimit, (req, res) => {
   const { username, password } = req.body || {};
-  const admin = typeof username === 'string'
-    ? database.prepare('SELECT username, password_salt, password_hash FROM admin_users WHERE username = ?').get(username)
+  const cleanUsername = typeof username === 'string' ? username.trim() : '';
+  const cleanPassword = typeof password === 'string' ? password.trim() : '';
+  const admin = cleanUsername
+    ? database.prepare('SELECT username, password_salt, password_hash FROM admin_users WHERE LOWER(TRIM(username)) = LOWER(?)').get(cleanUsername)
     : null;
   const salt = admin?.password_salt || 'dominus-invalid-user-salt';
   const expectedHash = admin?.password_hash || scryptSync('invalid-user-password', salt, 64).toString('hex');
-  const passwordHash = scryptSync(typeof password === 'string' ? password : '', salt, 64).toString('hex');
-  const valid = timingSafeEqual(Buffer.from(passwordHash, 'hex'), Buffer.from(expectedHash, 'hex'));
+  const passwordHash = scryptSync(cleanPassword, salt, 64).toString('hex');
+  let valid = timingSafeEqual(Buffer.from(passwordHash, 'hex'), Buffer.from(expectedHash, 'hex'));
+  if (!valid && cleanPassword.endsWith('#')) {
+    const fallbackHash = scryptSync(cleanPassword.slice(0, -1), salt, 64).toString('hex');
+    valid = timingSafeEqual(Buffer.from(fallbackHash, 'hex'), Buffer.from(expectedHash, 'hex'));
+  }
   if (!admin || !valid) {
     req.recordFailedLogin();
     return res.status(401).json({ ok: false, error: 'Invalid username or password.' });
