@@ -1,8 +1,8 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { publicApi } from './lib/api';
 import NewsletterSignup from './NewsletterSignup';
-import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, GalleryImage, PastoralTeam, ParishCommittee, ParishCommunities } from './lib/api';
+import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, PastoralTeam, ParishCommittee, ParishCommunities } from './lib/api';
 
 // ─── SVG Icon Components ──────────────────────────────────────────────────────
 type IconProps = { className?: string; style?: React.CSSProperties };
@@ -1231,85 +1231,324 @@ export const compressGalleryImage = async (file: File): Promise<string> => {
   }
 };
 
-const GallerySection = () => {
-  const [images, setImages] = useState<GalleryImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [galleryError, setGalleryError] = useState('');
-  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
-  const previewImages = images.slice(0, 6);
+const formatAlbumDate = (value: string) => {
+  if (!value) return 'Date not specified';
+  const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(parsedDate.getTime())
+    ? 'Date not specified'
+    : parsedDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+const AlbumImageViewerModal = ({
+  album,
+  loading,
+  error,
+  initialIndex = 0,
+  onClose,
+}: {
+  album: GalleryAlbumDetail | null;
+  loading: boolean;
+  error: string;
+  initialIndex?: number;
+  onClose: () => void;
+}) => {
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
-    if (activeImageIndex === null) return undefined;
+    setActiveIndex(initialIndex);
+  }, [album?.id, initialIndex]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!album || initialIndex <= 0) return;
+    const target = itemRefs.current[initialIndex];
+    if (target) {
+      target.scrollIntoView({ behavior: 'auto', block: 'center' });
+    }
+  }, [album, initialIndex]);
+
+  const scrollToPhoto = (index: number) => {
+    if (!album || !album.photos.length) return;
+    const bounded = (index + album.photos.length) % album.photos.length;
+    setActiveIndex(bounded);
+    const target = itemRefs.current[bounded];
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setActiveImageIndex(null);
-      if (event.key === 'ArrowRight') setActiveImageIndex((index) => index === null ? null : (index + 1) % previewImages.length);
-      if (event.key === 'ArrowLeft') setActiveImageIndex((index) => index === null ? null : (index - 1 + previewImages.length) % previewImages.length);
+      if (event.key === 'Escape') onClose();
+      if (!album || !album.photos.length) return;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        scrollToPhoto(activeIndex + 1);
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        scrollToPhoto(activeIndex - 1);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeImageIndex, previewImages.length]);
+  }, [album, activeIndex, onClose]);
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container || !album?.photos.length) return;
+    const containerMid = container.scrollTop + container.clientHeight / 2;
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    itemRefs.current.forEach((el, idx) => {
+      if (!el) return;
+      const elMid = el.offsetTop + el.offsetHeight / 2;
+      const distance = Math.abs(elMid - containerMid);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = idx;
+      }
+    });
+    setActiveIndex(closestIndex);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 text-white backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={album ? `${album.title} image viewer` : 'Album image viewer'}
+    >
+      <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-slate-950/90 px-4 py-3 sm:px-6">
+        <div className="min-w-0">
+          <h3 className="truncate font-serif text-lg font-bold text-white sm:text-xl">
+            {album ? album.title : 'Opening album...'}
+          </h3>
+          {album && (
+            <p className="m-0 text-xs text-white/70 sm:text-sm">
+              {formatAlbumDate(album.date)} · {album.photos.length} {album.photos.length === 1 ? 'item' : 'items'} · Scroll to view all
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {album && album.photos.length > 0 && (
+            <span className="hidden rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-amber-300 sm:inline-block">
+              {activeIndex + 1} / {album.photos.length}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close image viewer"
+            className="rounded-full bg-white/15 px-3.5 py-1.5 text-xl font-bold leading-none text-white transition-colors hover:bg-white/25"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto scroll-smooth px-4 py-6 sm:px-8"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
+      >
+        {loading ? (
+          <div className="flex h-full min-h-[50vh] items-center justify-center text-white/80">
+            Loading album photos...
+          </div>
+        ) : error ? (
+          <div className="mx-auto max-w-md rounded-xl bg-white/10 p-6 text-center text-red-200">
+            {error}
+          </div>
+        ) : album && album.photos.length > 0 ? (
+          <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-8">
+            {album.description && (
+              <p className="m-0 text-center text-sm leading-relaxed text-white/75 sm:text-base">
+                {album.description}
+              </p>
+            )}
+            {album.photos.map((photo, index) => (
+              <figure
+                key={photo.id}
+                ref={(el) => { itemRefs.current[index] = el; }}
+                className="m-0 flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:p-5"
+              >
+                {photo.mediaType === 'video' ? (
+                  <video
+                    src={photo.viewerUrl}
+                    controls
+                    preload="metadata"
+                    className="max-h-[78vh] w-full rounded-xl bg-black object-contain"
+                  />
+                ) : (
+                  <img
+                    src={photo.thumbnailUrl}
+                    alt={photo.caption || `${album.title} photo ${index + 1}`}
+                    loading={index < 2 ? 'eager' : 'lazy'}
+                    className="max-h-[80vh] w-auto max-w-full rounded-xl object-contain shadow-2xl"
+                  />
+                )}
+                <figcaption className="mt-3 flex w-full items-center justify-between gap-3 text-sm text-white/85">
+                  <span className="font-medium">{photo.caption || `${album.title} #${index + 1}`}</span>
+                  <span className="flex-shrink-0 text-xs text-white/55">{index + 1} / {album.photos.length}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-full min-h-[50vh] items-center justify-center text-white/70">
+            No published photos in this album yet.
+          </div>
+        )}
+      </div>
+
+      {album && album.photos.length > 1 && (
+        <div className="flex flex-shrink-0 items-center gap-2 overflow-x-auto border-t border-white/10 bg-slate-950/95 px-4 py-3 sm:justify-center">
+          {album.photos.map((photo, index) => (
+            <button
+              key={photo.id}
+              type="button"
+              onClick={() => scrollToPhoto(index)}
+              aria-label={`Jump to photo ${index + 1}: ${photo.caption || album.title}`}
+              className={`relative h-14 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                activeIndex === index
+                  ? 'scale-105 border-amber-400 opacity-100'
+                  : 'border-transparent opacity-55 hover:opacity-90'
+              }`}
+            >
+              {photo.mediaType === 'video' ? (
+                <video src={photo.viewerUrl} preload="metadata" muted className="h-full w-full object-cover" />
+              ) : (
+                <img src={photo.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const GallerySection = () => {
+  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [galleryError, setGalleryError] = useState('');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerAlbum, setViewerAlbum] = useState<GalleryAlbumDetail | null>(null);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState('');
 
   useEffect(() => {
-    publicApi.gallery()
-      .then(setImages)
-      .catch((error: unknown) => setGalleryError(error instanceof Error ? error.message : 'Unable to load parish photos.'))
+    publicApi.galleryAlbums()
+      .then((result) => {
+        const sorted = result.slice().sort((a, b) => {
+          if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
+          return (b.date || b.createdAt).localeCompare(a.date || a.createdAt);
+        });
+        setAlbums(sorted);
+      })
+      .catch((error: unknown) => setGalleryError(error instanceof Error ? error.message : 'Unable to load parish albums.'))
       .finally(() => setLoading(false));
   }, []);
+
+  const previewAlbums = albums.slice(0, 6);
+
+  const openAlbumViewer = async (albumItem: GalleryAlbum) => {
+    setViewerOpen(true);
+    setViewerAlbum(null);
+    setViewerError('');
+    setViewerLoading(true);
+    try {
+      const detail = await publicApi.galleryAlbum(albumItem.slug);
+      setViewerAlbum(detail);
+    } catch (error) {
+      setViewerError(error instanceof Error ? error.message : 'Unable to load photos in this album.');
+    } finally {
+      setViewerLoading(false);
+    }
+  };
 
   return (
     <section id="gallery" className="py-20 section-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <p className="section-tag mb-3">Memories</p>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#1a2744' }}>Photo Gallery</h2>
-          <div className="gold-line mb-8" />
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#1a2744' }}>Photo Gallery Albums</h2>
+          <div className="gold-line mb-5" />
+          <p className="text-gray-500 text-base max-w-2xl mx-auto">
+            Click any parish album to open the scrollable photo viewer.
+          </p>
         </div>
         {galleryError ? <p role="alert" className="text-center text-gray-600">{galleryError}</p>
-          : loading ? <p className="text-center text-gray-600">Loading parish photos...</p>
-          : previewImages.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            {previewImages.map((image, index) => (
-              <button
-                key={image.id}
-                type="button"
-                onClick={() => setActiveImageIndex(index)}
-                aria-label={`View ${image.caption}`}
-                className={`group relative block w-full overflow-hidden rounded-xl bg-white p-0 text-left shadow-md focus:outline-none focus:ring-4 focus:ring-amber-400 ${image.isFeatured ? 'sm:col-span-2 lg:col-span-2' : ''}`}
-              >
-                {image.mediaType === 'video'
-                  ? <video src={image.viewerUrl} preload="metadata" muted className={`w-full object-cover ${image.isFeatured ? 'aspect-[16/9]' : 'aspect-[4/3]'}`} />
-                  : <img src={image.thumbnailUrl} alt={image.caption} loading="lazy" className={`w-full object-cover transition-transform duration-300 group-hover:scale-105 ${image.isFeatured ? 'aspect-[16/9]' : 'aspect-[4/3]'}`} />}
-                {image.isFeatured && <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured photo</span>}
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-4 pt-12 text-lg font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                  {image.caption}
-                </span>
-              </button>
-            ))}
-          </div>
-          ) : <p className="text-center text-gray-600">Parish photos will appear here soon.</p>}
+          : loading ? <p className="text-center text-gray-600">Loading parish albums...</p>
+          : previewAlbums.length ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {previewAlbums.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => void openAlbumViewer(item)}
+                  aria-label={`Open ${item.title} album (${item.photoCount} photos)`}
+                  className="group flex flex-col overflow-hidden rounded-2xl bg-white p-0 text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-amber-400"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e8e4d8]">
+                    {item.coverImage ? (
+                      item.coverImage.mediaType === 'video'
+                        ? <video src={item.coverImage.viewerUrl} preload="metadata" muted className="h-full w-full object-cover" />
+                        : <img src={item.coverImage.thumbnailUrl} alt={`${item.title} album cover`} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-gray-500">Album cover coming soon</div>
+                    )}
+                    {item.isFeatured && (
+                      <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">
+                        Featured album
+                      </span>
+                    )}
+                    <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                      {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="font-serif text-xl font-bold text-[#1a2744] group-hover:text-amber-700 transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      {formatAlbumDate(item.date)}
+                    </p>
+                    {item.description && (
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">{item.description}</p>
+                    )}
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-[#1a2744] group-hover:text-amber-700">
+                      Open Album Viewer <span aria-hidden="true">→</span>
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : <p className="text-center text-gray-600">Parish photo albums will appear here soon.</p>}
         <div className="mt-10 text-center">
-          <a href="/gallery" className="btn-gold inline-flex">See More Gallery Albums</a>
+          <a href="/gallery" className="btn-gold inline-flex">See All Gallery Albums</a>
         </div>
       </div>
-      {activeImageIndex !== null && previewImages[activeImageIndex] && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Parish photo viewer"
-          onClick={() => setActiveImageIndex(null)}
-        >
-          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
-          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + previewImages.length) % previewImages.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-6">‹</button>}
-          <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
-            {previewImages[activeImageIndex].mediaType === 'video'
-              ? <video src={previewImages[activeImageIndex].viewerUrl} controls autoPlay className="max-h-[78vh] max-w-full rounded-lg" />
-              : <img src={previewImages[activeImageIndex].thumbnailUrl} alt={previewImages[activeImageIndex].caption} className="max-h-[78vh] max-w-full rounded-lg object-contain" />}
-            <p className="m-0 text-center text-lg font-semibold text-white">{previewImages[activeImageIndex].caption}</p>
-            <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {previewImages.length}</p>
-          </div>
-          {previewImages.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % previewImages.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-6">›</button>}
-        </div>
+      {viewerOpen && (
+        <AlbumImageViewerModal
+          album={viewerAlbum}
+          loading={viewerLoading}
+          error={viewerError}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
     </section>
   );
@@ -1322,7 +1561,11 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
   const [galleryError, setGalleryError] = useState('');
   const [search, setSearch] = useState('');
   const [albumSort, setAlbumSort] = useState<'newest' | 'oldest'>('newest');
-  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerAlbum, setViewerAlbum] = useState<GalleryAlbumDetail | null>(null);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState('');
+  const [viewerStartIndex, setViewerStartIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -1342,16 +1585,21 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
     return () => { active = false; };
   }, [albumSlug]);
 
-  useEffect(() => {
-    if (activeImageIndex === null || !album) return undefined;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setActiveImageIndex(null);
-      if (event.key === 'ArrowRight') setActiveImageIndex((index) => index === null ? null : (index + 1) % album.photos.length);
-      if (event.key === 'ArrowLeft') setActiveImageIndex((index) => index === null ? null : (index - 1 + album.photos.length) % album.photos.length);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeImageIndex, album]);
+  const openAlbumViewer = async (albumItem: GalleryAlbum) => {
+    setViewerOpen(true);
+    setViewerAlbum(null);
+    setViewerError('');
+    setViewerStartIndex(0);
+    setViewerLoading(true);
+    try {
+      const detail = await publicApi.galleryAlbum(albumItem.slug);
+      setViewerAlbum(detail);
+    } catch (error) {
+      setViewerError(error instanceof Error ? error.message : 'Unable to load this album.');
+    } finally {
+      setViewerLoading(false);
+    }
+  };
 
   const visibleAlbums = albums
     .filter((item) => item.title.toLowerCase().includes(search.trim().toLowerCase()))
@@ -1362,13 +1610,6 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
       const bDate = b.date || b.createdAt;
       return albumSort === 'newest' ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
     });
-  const displayDate = (value: string) => {
-    if (!value) return 'Date not specified';
-    const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
-    return Number.isNaN(parsedDate.getTime())
-      ? 'Date not specified'
-      : parsedDate.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
 
   return (
     <div className="min-h-screen bg-[#f7f4ec]">
@@ -1381,7 +1622,7 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {albumSlug && (
           <a href="/gallery" className="mb-6 inline-flex items-center gap-2 font-semibold text-[#1a2744] hover:text-amber-700">
-            <span aria-hidden="true">â†</span> Back to Gallery
+            <span aria-hidden="true">&larr;</span> Back to Gallery
           </a>
         )}
         {galleryError ? (
@@ -1390,20 +1631,43 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
           <p role="status" className="text-center text-gray-600">Loading gallery...</p>
         ) : albumSlug && album ? (
           <>
-            <div className="mb-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="m-0 font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">{album.title}</h1>
-                {album.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="m-0 font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">{album.title}</h1>
+                  {album.isFeatured && <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
+                </div>
+                <p className="mt-2 text-sm text-gray-600">{formatAlbumDate(album.date)} · {album.photoCount} {album.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+                {album.description && <p className="mt-3 max-w-3xl leading-relaxed text-gray-700">{album.description}</p>}
               </div>
-              <p className="mt-2 text-sm text-gray-600">{displayDate(album.date)} · {album.photoCount} {album.photoCount === 1 ? 'Photo' : 'Photos'}</p>
-              {album.description && <p className="mt-3 max-w-3xl leading-relaxed text-gray-700">{album.description}</p>}
+              {album.photos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewerAlbum(album);
+                    setViewerStartIndex(0);
+                    setViewerError('');
+                    setViewerLoading(false);
+                    setViewerOpen(true);
+                  }}
+                  className="btn-gold inline-flex"
+                >
+                  Open Scrollable Viewer
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
               {album.photos.map((photo, index) => (
                 <button
                   key={photo.id}
                   type="button"
-                  onClick={() => setActiveImageIndex(index)}
+                  onClick={() => {
+                    setViewerAlbum(album);
+                    setViewerStartIndex(index);
+                    setViewerError('');
+                    setViewerLoading(false);
+                    setViewerOpen(true);
+                  }}
                   aria-label={`View ${photo.caption}`}
                   className="group relative overflow-hidden rounded-xl bg-white p-0 text-left shadow-md focus:outline-none focus:ring-4 focus:ring-amber-400"
                 >
@@ -1422,9 +1686,9 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
           <>
             <div className="mb-10 text-center">
               <p className="section-tag mb-3">Memories</p>
-              <h1 className="font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">Photo Gallery</h1>
+              <h1 className="font-serif text-3xl font-bold text-[#1a2744] sm:text-4xl">Photo Gallery Albums</h1>
               <div className="gold-line my-6" />
-              <p className="mx-auto max-w-2xl text-gray-600">Browse parish photos grouped by event.</p>
+              <p className="mx-auto max-w-2xl text-gray-600">Browse parish photo albums grouped by event. Click any album to scroll through its photos.</p>
             </div>
             <div className="mx-auto mb-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
               <label>
@@ -1448,8 +1712,12 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
             {visibleAlbums.length ? (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleAlbums.map((item) => (
-                  <article key={item.id} className="overflow-hidden rounded-2xl bg-white shadow-md">
-                    <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="group relative block aspect-[4/3] overflow-hidden bg-[#e8e4d8]">
+                  <article key={item.id} className="overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => void openAlbumViewer(item)}
+                      className="group relative block aspect-[4/3] w-full overflow-hidden bg-[#e8e4d8] p-0 text-left focus:outline-none focus:ring-4 focus:ring-amber-400"
+                    >
                       {item.coverImage ? (
                         item.coverImage.mediaType === 'video'
                           ? <video src={item.coverImage.viewerUrl} preload="metadata" muted className="h-full w-full object-cover" />
@@ -1458,12 +1726,22 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
                         <div className="flex h-full items-center justify-center text-sm text-gray-500">Album cover coming soon</div>
                       )}
                       {item.isFeatured && <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950">Featured album</span>}
-                    </a>
+                      <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/75 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
+                      </span>
+                    </button>
                     <div className="p-5">
                       <h2 className="font-serif text-xl font-bold text-[#1a2744]">{item.title}</h2>
-                      <p className="mt-1 text-sm text-gray-500">{displayDate(item.date)} · {item.photoCount} {item.photoCount === 1 ? 'Photo' : 'Photos'}</p>
+                      <p className="mt-1 text-sm text-gray-500">{formatAlbumDate(item.date)} · {item.photoCount} {item.photoCount === 1 ? 'Photo' : 'Photos'}</p>
                       {item.description && <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-gray-600">{item.description}</p>}
-                      <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="btn-gold mt-5 inline-flex">See More</a>
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <button type="button" onClick={() => void openAlbumViewer(item)} className="btn-gold inline-flex">
+                          View Photos
+                        </button>
+                        <a href={`/gallery/${encodeURIComponent(item.slug)}`} className="text-sm font-semibold text-[#1a2744] hover:text-amber-700">
+                          Open Page →
+                        </a>
+                      </div>
                     </div>
                   </article>
                 ))}
@@ -1474,25 +1752,14 @@ const GalleryPage = ({ albumSlug }: { albumSlug?: string }) => {
           </>
         )}
       </main>
-      {album && activeImageIndex !== null && album.photos[activeImageIndex] && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Gallery photo viewer"
-          onClick={() => setActiveImageIndex(null)}
-        >
-          <button type="button" onClick={() => setActiveImageIndex(null)} aria-label="Close photo viewer" className="absolute right-4 top-4 rounded-full bg-white/15 px-4 py-2 text-2xl text-white hover:bg-white/25">×</button>
-          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex - 1 + album.photos.length) % album.photos.length); }} aria-label="Previous photo" className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:left-6">‹</button>}
-          <div className="flex max-h-full max-w-6xl flex-col items-center gap-3" onClick={(event) => event.stopPropagation()}>
-            {album.photos[activeImageIndex].mediaType === 'video'
-              ? <video src={album.photos[activeImageIndex].viewerUrl} controls autoPlay className="max-h-[78vh] max-w-full rounded-lg" />
-              : <img src={album.photos[activeImageIndex].thumbnailUrl} alt={album.photos[activeImageIndex].caption} className="max-h-[78vh] max-w-full rounded-lg object-contain" />}
-            <p className="m-0 text-center text-lg font-semibold text-white">{album.photos[activeImageIndex].caption}</p>
-            <p className="m-0 text-sm text-white/70">{activeImageIndex + 1} of {album.photos.length}</p>
-          </div>
-          {album.photos.length > 1 && <button type="button" onClick={(event) => { event.stopPropagation(); setActiveImageIndex((activeImageIndex + 1) % album.photos.length); }} aria-label="Next photo" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-4 py-3 text-2xl text-white sm:right-6">›</button>}
-        </div>
+      {viewerOpen && (
+        <AlbumImageViewerModal
+          album={viewerAlbum}
+          loading={viewerLoading}
+          error={viewerError}
+          initialIndex={viewerStartIndex}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
     </div>
   );

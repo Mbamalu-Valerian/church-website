@@ -49,7 +49,6 @@ const DominusDashboard = () => {
   const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
   const [articleError, setArticleError] = useState('');
   const [articleMessage, setArticleMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [feastDays, setFeastDays] = useState<FeastDay[]>([]);
   const [feastTitle, setFeastTitle] = useState('');
   const [feastDate, setFeastDate] = useState(getTodayInAbuja());
@@ -183,8 +182,7 @@ const DominusDashboard = () => {
   useEffect(() => {
     authApi.isAdmin()
       .then(setIsAuthenticated)
-      .catch(() => setIsAuthenticated(false))
-      .finally(() => setLoading(false));
+      .catch(() => setIsAuthenticated(false));
   }, []);
 
   useEffect(() => {
