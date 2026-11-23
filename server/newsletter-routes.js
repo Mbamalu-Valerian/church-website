@@ -52,7 +52,7 @@ export function registerNewsletterRoutes(app, { database, requireSession, parseI
     if (typeof req.body?.website === 'string' && req.body.website.trim()) return res.status(201).json({ ok: true, data: { subscribed: true } }); // honeypot: pretend success
     const fields = readSubscriberFields(req.body, { requireConsent: true });
     if (fields.error) return res.status(400).json({ ok: false, error: fields.error });
-    const existing = get('SELECT id, unsubscribe_token FROM newsletter_subscribers WHERE email = ?', fields.email);
+    const existing = get('SELECT id, status, unsubscribe_token FROM newsletter_subscribers WHERE email = ?', fields.email);
     let token;
     if (existing) {
       run("UPDATE newsletter_subscribers SET name = ?, whatsapp = ?, phone = ?, status = 'Active', consent_at = CURRENT_TIMESTAMP, unsubscribed_at = NULL WHERE id = ?", fields.name, fields.whatsapp, fields.phone, existing.id);
@@ -62,13 +62,92 @@ export function registerNewsletterRoutes(app, { database, requireSession, parseI
       run("INSERT INTO newsletter_subscribers (name, email, whatsapp, phone, status, source, unsubscribe_token, consent_at) VALUES (?, ?, ?, ?, 'Active', 'website', ?, CURRENT_TIMESTAMP)", fields.name, fields.email, fields.whatsapp, fields.phone, token);
     }
     const mailer = getMailer();
-    if (mailer && !existing) {
-      const unsubscribeUrl = unsubscribeUrlFor(getBaseUrl(), token);
+    if (mailer && (!existing || existing.status === 'Unsubscribed')) {
+      const siteUrl = getBaseUrl().replace(/\/+$/, '');
+      const unsubscribeUrl = unsubscribeUrlFor(siteUrl, token);
+      const instagramUrl = (process.env.PARISH_INSTAGRAM_URL || 'https://instagram.com').trim();
+      const platformUrl = (process.env.PARISHIONERS_PLATFORM_URL || `${siteUrl}/#community`).trim();
       mailer.send({
         to: { name: fields.name, address: fields.email },
-        subject: `Welcome to ${NEWSLETTER_TITLE}`,
-        text: `Dear ${fields.name},\n\nThank you for subscribing to ${NEWSLETTER_TITLE}, the ${PARISH_NAME} newsletter. You will receive our parish news and highlights by email once a month.\n\nIf you did not sign up, or you no longer wish to receive it, unsubscribe here: ${unsubscribeUrl}\n\nGod bless you.`,
-        html: `<div style="font-family:Georgia,serif;font-size:16px;line-height:1.7;color:#1a2744;max-width:520px"><p>Dear ${escapeHtml(fields.name)},</p><p>Thank you for subscribing to <strong>${NEWSLETTER_TITLE}</strong>, the ${PARISH_NAME} newsletter. You will receive our parish news and highlights by email once a month.</p><p>God bless you.</p><p style="font:12px Arial,sans-serif;color:#64748b">If you did not sign up, or no longer wish to receive it, <a href="${escapeHtml(unsubscribeUrl)}">unsubscribe here</a>.</p></div>`,
+        subject: `Welcome to ${NEWSLETTER_TITLE} — Thank You for Subscribing!`,
+        text: [
+          `Dear ${fields.name},`,
+          '',
+          `Thank you for subscribing to ${NEWSLETTER_TITLE}, the monthly parish newsletter of ${PARISH_NAME}, Wuse Zone 2, Abuja!`,
+          '',
+          'HOLY MASS SCHEDULE',
+          '- Monday – Friday: 6:00 AM, 12:00 Noon, 6:00 PM',
+          '- Saturday: 7:00 AM',
+          '- Sunday: 6:00 AM, 8:00 AM, 8:15 AM (Children), 10:00 AM, 6:00 PM',
+          '',
+          'CONFESSION TIMES',
+          '- Thursday: 6:30 AM & 6:30 PM',
+          '- Saturday: 7:30 AM',
+          '',
+          'CONTACT & COMMUNITY',
+          '- Address: Mambolo Street, Wuse Zone 2, Abuja 904101, Nigeria',
+          '- Phone: +234 907 076 1824',
+          '- Email: holyrosaryabuja@catholic.ng',
+          `- Instagram: ${instagramUrl}`,
+          `- Parishioners Platform: ${platformUrl}`,
+          `- Website: ${siteUrl}`,
+          '',
+          'God bless you and welcome to our parish family!',
+          '',
+          `If you did not sign up or no longer wish to receive ${NEWSLETTER_TITLE}, unsubscribe here: ${unsubscribeUrl}`,
+        ].join('\n'),
+        html: `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#efe9dc;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#efe9dc"><tr><td align="center" style="padding:28px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#fffdf8;border-radius:8px;overflow:hidden;box-shadow:0 8px 30px rgba(26,39,68,0.12);">
+    <tr><td bgcolor="#1a2744" align="center" style="background:#1a2744;border-top:5px solid #c9a84c;padding:30px 24px 24px;">
+      <img src="${escapeHtml(siteUrl)}/images/holy_rosary_seal_cutout.png" alt="${PARISH_NAME}" width="68" height="68" style="display:block;width:68px;height:68px;border:0;margin:0 auto 12px;" />
+      <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#d8c78f;">${PARISH_NAME}</p>
+      <h1 style="margin:8px 0 0;font-family:Georgia,serif;font-size:28px;color:#f6e7b8;font-weight:normal;">Thank You for Subscribing!</h1>
+    </td></tr>
+    <tr><td style="padding:30px 32px;font-family:Georgia,serif;font-size:16px;line-height:1.7;color:#1a2744;">
+      <p style="margin:0 0 14px;">Dear <strong>${escapeHtml(fields.name)}</strong>,</p>
+      <p style="margin:0 0 22px;">Thank you for subscribing to <strong>${NEWSLETTER_TITLE}</strong>, the official parish newsletter of ${PARISH_NAME}, Wuse Zone 2, Abuja. You will receive parish news, reflections, and highlights straight to your inbox every month.</p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f4e8;border-left:4px solid #c9a84c;border-radius:6px;margin-bottom:20px;">
+        <tr><td style="padding:18px 20px;font-family:Arial,sans-serif;font-size:14px;line-height:1.65;color:#1a2744;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#a07830;">Holy Mass Schedule</p>
+          <p style="margin:0 0 4px;"><strong>Mon – Fri:</strong> 6:00 AM, 12:00 Noon, 6:00 PM</p>
+          <p style="margin:0 0 4px;"><strong>Saturday:</strong> 7:00 AM</p>
+          <p style="margin:0 0 14px;"><strong>Sunday:</strong> 6:00 AM, 8:00 AM, 8:15 AM (Children), 10:00 AM, 6:00 PM</p>
+          <p style="margin:0 0 8px;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#a07830;">Confession Times</p>
+          <p style="margin:0;"><strong>Thursday:</strong> 6:30 AM &amp; 6:30 PM &nbsp;|&nbsp; <strong>Saturday:</strong> 7:30 AM</p>
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6fb;border-radius:6px;margin-bottom:22px;">
+        <tr><td style="padding:18px 20px;font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a2744;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#a07830;">Contact &amp; Stay Connected</p>
+          <p style="margin:0 0 4px;"><strong>Address:</strong> Mambolo Street, Wuse Zone 2, Abuja 904101, Nigeria</p>
+          <p style="margin:0 0 4px;"><strong>Phone:</strong> <a href="tel:+2349070761824" style="color:#1a2744;">+234 907 076 1824</a></p>
+          <p style="margin:0 0 14px;"><strong>Email:</strong> <a href="mailto:holyrosaryabuja@catholic.ng" style="color:#1a2744;">holyrosaryabuja@catholic.ng</a></p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td bgcolor="#1a2744" style="border-radius:6px;padding-right:0;">
+              <a href="${escapeHtml(platformUrl)}" style="display:inline-block;padding:10px 18px;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#f6e7b8;text-decoration:none;">Parishioners Platform</a>
+            </td>
+            <td width="10">&nbsp;</td>
+            <td bgcolor="#c9a84c" style="border-radius:6px;">
+              <a href="${escapeHtml(instagramUrl)}" style="display:inline-block;padding:10px 18px;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#1a2744;text-decoration:none;">Follow on Instagram</a>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+
+      <p style="margin:0;">Peace and blessings to you and your family,<br /><strong>${PARISH_NAME}</strong></p>
+    </td></tr>
+    <tr><td bgcolor="#1a2744" align="center" style="background:#1a2744;padding:20px 24px;font-family:Arial,sans-serif;font-size:11px;line-height:1.6;color:#97a1ba;">
+      <p style="margin:0 0 6px;color:#c9d0e0;"><a href="${escapeHtml(siteUrl)}" style="color:#f3e3b0;text-decoration:underline;">${escapeHtml(siteUrl.replace(/^https?:\/\//, ''))}</a></p>
+      <p style="margin:0;">If you did not sign up or no longer wish to receive ${NEWSLETTER_TITLE}, <a href="${escapeHtml(unsubscribeUrl)}" style="color:#f3e3b0;text-decoration:underline;">unsubscribe here</a>.</p>
+    </td></tr>
+  </table>
+</td></tr></table>
+</body></html>`,
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
       }).catch((error) => log.error?.(`Welcome email failed: ${error?.message || error}`));
     }

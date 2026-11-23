@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { publicApi } from './lib/api';
-import NewsletterSignup from './NewsletterSignup';
+import NewsletterSignupModal from './NewsletterSignup';
 import type { Announcement, ParishArticle, FeastDay, GalleryAlbum, GalleryAlbumDetail, PastoralTeam, ParishCommittee, ParishCommunities } from './lib/api';
 
 // ─── SVG Icon Components ──────────────────────────────────────────────────────
@@ -2187,6 +2187,14 @@ const ContactSection = () => (
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 const Footer = () => {
+  const [footerEmail, setFooterEmail] = useState('');
+  const [signupModalOpen, setSignupModalOpen] = useState(false);
+
+  const handleFooterSubscribe = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSignupModalOpen(true);
+  };
+
   const quickLinks = [
     { label: 'Mass Schedule', href: '#home' },
     { label: 'About Us', href: '#about' },
@@ -2279,16 +2287,20 @@ const Footer = () => {
               <p className="text-gray-400 text-sm mb-4">
                 Receive parish newsletters, event updates, and spiritual reflections directly to your inbox.
               </p>
-              <div className="space-y-2 mb-5">
+              <form onSubmit={handleFooterSubscribe} className="space-y-2 mb-5">
                 <input
                   type="email"
+                  required
+                  value={footerEmail}
+                  onChange={(event) => setFooterEmail(event.target.value)}
                   placeholder="Your email address"
-                  className="w-full px-4 py-2.5 rounded-lg text-sm text-white bg-white/10 border border-white/15 placeholder-gray-500 focus:outline-none focus:border-amber-400 transition-colors"
+                  aria-label="Your email address"
+                  className="w-full px-4 py-2.5 rounded-lg text-sm text-white bg-white/10 border border-white/15 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
                 />
-                <button className="btn-gold w-full justify-center text-xs py-2.5">
+                <button type="submit" className="btn-gold w-full justify-center text-xs py-2.5">
                   Subscribe to Newsletter
                 </button>
-              </div>
+              </form>
               <div className="flex gap-3">
                 <a
                   href="https://instagram.com"
@@ -2326,6 +2338,11 @@ const Footer = () => {
           </div>
         </div>
       </div>
+      <NewsletterSignupModal
+        open={signupModalOpen}
+        initialEmail={footerEmail.trim()}
+        onClose={() => setSignupModalOpen(false)}
+      />
     </footer>
   );
 };
@@ -2405,7 +2422,6 @@ export default function App() {
         <GallerySection />
         <ArticlesSection />
         <OfficeHoursSection />
-        <NewsletterSignup />
         <ContactSection />
         <Footer />
       </div>
